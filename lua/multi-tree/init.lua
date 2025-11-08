@@ -15,7 +15,28 @@ local function normalize_path(path)
   if vim.fn.has("win32") == 1 then
     path = path:gsub("\\", "/")
   end
-  return vim.fn.fnamemodify(path, ":p")
+  path = vim.fn.fnamemodify(path, ":p")
+  -- Strip trailing slashes except on root ("/") or Windows drive roots ("C:/").
+  if path ~= "/" and not path:match("^%a:/$") then
+    path = path:gsub("/+$", "")
+  end
+  return path
+end
+
+local function basename_safe(path)
+  if vim.fs and vim.fs.basename then
+    local name = vim.fs.basename(path)
+    if name and name ~= "" then return name end
+  end
+  -- Fallback for older Neovim: handle trailing slash.
+  local name = vim.fn.fnamemodify(path, ":t")
+  if name == "" then
+    name = vim.fn.fnamemodify(path, ":h:t")
+  end
+  if name == "" then
+    name = path
+  end
+  return name
 end
 
 local function icon_for(node, default)
@@ -90,6 +111,11 @@ end
 
 local function render(state)
   local buf = state.buf
+
+    -- Make sure we can update without warnings.
+  vim.bo[buf].readonly = false
+  vim.bo[buf].modifiable = true
+
   local root = state.root_node
   local lines = {}
   local line2node = {}
@@ -136,9 +162,10 @@ end
 
 local function change_root(node, state)
   if node.type ~= "dir" then return end
+  local npath = normalize_path(node.path)
   local new_root = {
-    path = node.path,
-    name = vim.fn.fnamemodify(node.path, ":t"),
+    path = npath,
+    name = basename_safe(npath),
     type = "dir",
     children = nil,
     expanded = true,
@@ -261,7 +288,6 @@ local function create_buffer(win)
   vim.bo[buf].swapfile = false
   vim.bo[buf].filetype = "multi-tree"
   vim.bo[buf].modifiable = false
-  vim.bo[buf].readonly = true
   vim.wo[win].cursorline = true
   return buf
 end
@@ -278,9 +304,10 @@ function M.open(path, opts)
     line2node = {},
   }
 
+  local abs = normalize_path(path)
   local root = {
-    path = normalize_path(path),
-    name = vim.fn.fnamemodify(path, ":t"),
+    path = abs,
+    name = basename_safe(abs),
     type = "dir",
     children = nil,
     expanded = true,
