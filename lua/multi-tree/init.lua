@@ -4,9 +4,11 @@ local uv = vim.loop
 local has_devicons, devicons = pcall(require, "nvim-web-devicons")
 
 M.states = {}
-M._id_counter = 0
-M._tab_counter = 0
-M.tab_titles = {}
+M.tab_titles = M.tab_titles or {}
+M._tab_counter = M._tab_counter or 0
+-- M._id_counter = 0
+-- M._tab_counter = 0
+-- M.tab_titles = {}
 
 local defaults = {
   show_hidden = false,
@@ -14,7 +16,19 @@ local defaults = {
   indent = 2,
 }
 
-local function _ensure_tab_title_for_current_tab()
+-- Return a label for a tabpage (used by Heirline).
+function M.tab_title(tab)
+  local title = M.tab_titles[tab]
+  if title then return title end
+  -- Fallback: active window’s buffer tail in that tab.
+  local win = vim.api.nvim_tabpage_get_win(tab)
+  local buf = vim.api.nvim_win_get_buf(win)
+  local name = vim.api.nvim_buf_get_name(buf)
+  return (name ~= "" and vim.fn.fnamemodify(name, ":t")) or "[No Name]"
+end
+
+-- Assign a title once per tab the first time a tree opens there.
+local function ensure_tab_title_for_current_tab()
   local tab = vim.api.nvim_get_current_tabpage()
   if not M.tab_titles[tab] then
     M._tab_counter = M._tab_counter + 1
@@ -23,46 +37,22 @@ local function _ensure_tab_title_for_current_tab()
   end
 end
 
-function M.tabline()
-  local s = ""
-  local tabs = vim.api.nvim_list_tabpages()
-  local current = vim.api.nvim_get_current_tabpage()
-  for _, tab in ipairs(tabs) do
-    local nr = vim.api.nvim_tabpage_get_number(tab)
-    s = s .. "%" .. nr .. "T"
-    s = s .. (tab == current and "%#TabLineSel#" or "%#TabLine#")
-    local label = M.tab_titles[tab]
-    if not label then
-      -- Fallback: active window’s buffer tail in that tab.
-      local win = vim.api.nvim_tabpage_get_win(tab)
-      local buf = vim.api.nvim_win_get_buf(win)
-      local name = vim.api.nvim_buf_get_name(buf)
-      label = (name ~= "" and vim.fn.fnamemodify(name, ":t")) or "[No Name]"
-    end
-    s = s .. " " .. label .. " "
-  end
-  s = s .. "%#TabLineFill#%="
-  return s
-end
-
-function M.on_tab_closed(tabnr)
-  -- Remove any entry whose number matches tabnr (handles tab handle invalidation).
-  for tab, _ in pairs(M.tab_titles) do
-    if pcall(vim.api.nvim_tabpage_get_number, tab) then
-      if vim.api.nvim_tabpage_get_number(tab) == tabnr then
-        M.tab_titles[tab] = nil
-      end
-    else
-      M.tab_titles[tab] = nil
-    end
-  end
-end
-
+-- Public rename helper.
 function M.tab_rename(new_name)
   if not new_name or new_name == "" then return end
   local tab = vim.api.nvim_get_current_tabpage()
   M.tab_titles[tab] = new_name
-  vim.cmd("redrawtabline") -- refresh the tabline immediately
+  vim.cmd("redrawtabline")
+end
+
+-- Optional cleanup when tabs close.
+function M.on_tab_closed(tabnr)
+  for tab, _ in pairs(M.tab_titles) do
+    local ok, nr = pcall(vim.api.nvim_tabpage_get_number, tab)
+    if not ok or nr == tabnr then
+      M.tab_titles[tab] = nil
+    end
+  end
 end
 
 local function normalize_path(path)
@@ -354,7 +344,8 @@ function M.open(path, opts)
   local win = vim.api.nvim_get_current_win()
   local buf = create_buffer(win)
 
-  _ensure_tab_title_for_current_tab()
+  -- Ensure per-tab title exists.
+  ensure_tab_title_for_current_tab()
 
   -- Assign per-tab title if missing.
   local tab = vim.api.nvim_get_current_tabpage()
