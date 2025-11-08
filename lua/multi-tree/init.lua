@@ -6,9 +6,6 @@ local has_devicons, devicons = pcall(require, "nvim-web-devicons")
 M.states = {}
 M.tab_titles = M.tab_titles or {}
 M._tab_counter = M._tab_counter or 0
--- M._id_counter = 0
--- M._tab_counter = 0
--- M.tab_titles = {}
 
 local defaults = {
   show_hidden = false,
@@ -324,11 +321,20 @@ local function attach_mappings(state)
   nmap("q", function() M.close(state) end, "Close tree buffer.")
 end
 
-local function create_buffer(win)
-  local buf = vim.api.nvim_create_buf(true, true)
-  M._id_counter = M._id_counter + 1
-  local title = string.format("MultiTree-%d", M._id_counter)
-  vim.api.nvim_buf_set_name(buf, title)
+-- Create the tree buffer in the given window.
+-- listed controls whether this buffer participates in Neovim’s normal buffer list:
+--   - listed = false (default): The buffer is unlisted. It won’t appear in :ls/:buffers,
+--     won’t be cycled by :bnext/:bprev, and most bufferline plugins will hide it.
+--     This is recommended for sidebar/explorer buffers to avoid cluttering buffer navigation.
+--   - listed = true: The buffer is listed. It will show up in :ls/:buffers, be included
+--     in :bnext/:bprev cycles, and appear in bufferline plugins. Use this if you want
+--     the tree to be selectable like regular file buffers.
+local function create_buffer(win, title, listed)
+  listed = listed or false -- default: unlisted scratch buffer
+  local buf = vim.api.nvim_create_buf(listed, true)
+  if title and title ~= "" then
+    vim.api.nvim_buf_set_name(buf, title)
+  end
 
   vim.api.nvim_win_set_buf(win, buf)
   vim.bo[buf].buftype = "nofile"
@@ -336,13 +342,17 @@ local function create_buffer(win)
   vim.bo[buf].swapfile = false
   vim.bo[buf].filetype = "multi-tree"
   vim.bo[buf].modifiable = false
+  vim.bo[buf].readonly = false
   vim.wo[win].cursorline = true
   return buf
 end
 
 function M.open(path, opts)
   local win = vim.api.nvim_get_current_win()
-  local buf = create_buffer(win)
+  local abs = normalize_path(path)
+  local root_name = basename_safe(abs)
+  local buf_title = "MultiTree: " .. root_name
+  local buf = create_buffer(win, buf_title)
 
   -- Ensure per-tab title exists.
   ensure_tab_title_for_current_tab()
