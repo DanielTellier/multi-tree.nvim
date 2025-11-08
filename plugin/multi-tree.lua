@@ -15,3 +15,7 @@ end, {})
 vim.api.nvim_create_user_command("MultiTreeClose", function()
   require("multi-tree").close_current()
 end, {})
+
+vim.api.nvim_create_user_command("MultiTreeTabRename", function(opts)
+  require("multi-tree").tab_rename(opts.args)
+end, { nargs = 1 })

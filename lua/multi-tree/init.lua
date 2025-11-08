@@ -4,12 +4,51 @@ local uv = vim.loop
 local has_devicons, devicons = pcall(require, "nvim-web-devicons")
 
 M.states = {}
+M.tab_titles = M.tab_titles or {}
+M._tab_counter = M._tab_counter or 0
 
 local defaults = {
   show_hidden = false,
   icons = true,
   indent = 2,
 }
+
+local function current_tab_title_or_default(tab)
+  local label = M.tab_titles[tab]
+  if label then return label end
+  -- Fallback: active window’s buffer name.
+  local win = vim.api.nvim_tabpage_get_win(tab)
+  local buf = vim.api.nvim_win_get_buf(win)
+  local name = vim.api.nvim_buf_get_name(buf)
+  local tail = name ~= "" and vim.fn.fnamemodify(name, ":t") or "[No Name]"
+  return tail
+end
+
+function M.tabline()
+  local s = ""
+  local tabs = vim.api.nvim_list_tabpages()
+  local current = vim.api.nvim_get_current_tabpage()
+  for _, tab in ipairs(tabs) do
+    local nr = vim.api.nvim_tabpage_get_number(tab)
+    s = s .. "%" .. nr .. "T" -- Make tab clickable.
+    if tab == current then
+      s = s .. "%#TabLineSel#"
+    else
+      s = s .. "%#TabLine#"
+    end
+    local label = current_tab_title_or_default(tab)
+    s = s .. " " .. label .. " "
+  end
+  s = s .. "%#TabLineFill#%="
+  return s
+end
+
+function M.tab_rename(new_name)
+  if not new_name or new_name == "" then return end
+  local tab = vim.api.nvim_get_current_tabpage()
+  M.tab_titles[tab] = new_name
+  vim.cmd("redrawtabline") -- refresh the tabline immediately
+end
 
 local function normalize_path(path)
   if vim.fn.has("win32") == 1 then
@@ -295,6 +334,13 @@ end
 function M.open(path, opts)
   local win = vim.api.nvim_get_current_win()
   local buf = create_buffer(win)
+
+    -- Assign per-tab title if missing.
+  local tab = vim.api.nvim_get_current_tabpage()
+  if not M.tab_titles[tab] then
+    M._tab_counter = M._tab_counter + 1
+    M.tab_titles[tab] = string.format("MultiTree-%d", M._tab_counter)
+  end
 
   local state = {
     win = win,
