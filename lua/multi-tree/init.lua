@@ -4,8 +4,9 @@ local uv = vim.loop
 local has_devicons, devicons = pcall(require, "nvim-web-devicons")
 
 M.states = {}
-M.tab_titles = M.tab_titles or {}
-M._tab_counter = M._tab_counter or 0
+M._id_counter = 0
+M._tab_counter = 0
+M.tab_titles = {}
 
 local defaults = {
   show_hidden = false,
@@ -13,15 +14,13 @@ local defaults = {
   indent = 2,
 }
 
-local function current_tab_title_or_default(tab)
-  local label = M.tab_titles[tab]
-  if label then return label end
-  -- Fallback: active window’s buffer name.
-  local win = vim.api.nvim_tabpage_get_win(tab)
-  local buf = vim.api.nvim_win_get_buf(win)
-  local name = vim.api.nvim_buf_get_name(buf)
-  local tail = name ~= "" and vim.fn.fnamemodify(name, ":t") or "[No Name]"
-  return tail
+local function _ensure_tab_title_for_current_tab()
+  local tab = vim.api.nvim_get_current_tabpage()
+  if not M.tab_titles[tab] then
+    M._tab_counter = M._tab_counter + 1
+    M.tab_titles[tab] = string.format("MultiTree-%d", M._tab_counter)
+    vim.cmd("redrawtabline")
+  end
 end
 
 function M.tabline()
@@ -30,17 +29,33 @@ function M.tabline()
   local current = vim.api.nvim_get_current_tabpage()
   for _, tab in ipairs(tabs) do
     local nr = vim.api.nvim_tabpage_get_number(tab)
-    s = s .. "%" .. nr .. "T" -- Make tab clickable.
-    if tab == current then
-      s = s .. "%#TabLineSel#"
-    else
-      s = s .. "%#TabLine#"
+    s = s .. "%" .. nr .. "T"
+    s = s .. (tab == current and "%#TabLineSel#" or "%#TabLine#")
+    local label = M.tab_titles[tab]
+    if not label then
+      -- Fallback: active window’s buffer tail in that tab.
+      local win = vim.api.nvim_tabpage_get_win(tab)
+      local buf = vim.api.nvim_win_get_buf(win)
+      local name = vim.api.nvim_buf_get_name(buf)
+      label = (name ~= "" and vim.fn.fnamemodify(name, ":t")) or "[No Name]"
     end
-    local label = current_tab_title_or_default(tab)
     s = s .. " " .. label .. " "
   end
   s = s .. "%#TabLineFill#%="
   return s
+end
+
+function M.on_tab_closed(tabnr)
+  -- Remove any entry whose number matches tabnr (handles tab handle invalidation).
+  for tab, _ in pairs(M.tab_titles) do
+    if pcall(vim.api.nvim_tabpage_get_number, tab) then
+      if vim.api.nvim_tabpage_get_number(tab) == tabnr then
+        M.tab_titles[tab] = nil
+      end
+    else
+      M.tab_titles[tab] = nil
+    end
+  end
 end
 
 function M.tab_rename(new_name)
@@ -320,7 +335,11 @@ local function attach_mappings(state)
 end
 
 local function create_buffer(win)
-  local buf = vim.api.nvim_create_buf(false, true)
+  local buf = vim.api.nvim_create_buf(true, true)
+  M._id_counter = M._id_counter + 1
+  local title = string.format("MultiTree-%d", M._id_counter)
+  vim.api.nvim_buf_set_name(buf, title)
+
   vim.api.nvim_win_set_buf(win, buf)
   vim.bo[buf].buftype = "nofile"
   vim.bo[buf].bufhidden = "wipe"
@@ -335,7 +354,9 @@ function M.open(path, opts)
   local win = vim.api.nvim_get_current_win()
   local buf = create_buffer(win)
 
-    -- Assign per-tab title if missing.
+  _ensure_tab_title_for_current_tab()
+
+  -- Assign per-tab title if missing.
   local tab = vim.api.nvim_get_current_tabpage()
   if not M.tab_titles[tab] then
     M._tab_counter = M._tab_counter + 1
