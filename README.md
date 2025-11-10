@@ -147,6 +147,7 @@ The plugin comes with sensible defaults that work out of the box. Here are all t
   restore_local_cwd_on_close = false, -- Restore previous cwd when closing tree buffer
   map_next_tab_keys = true,     -- Provide default <leader> mappings for "open in next tab"
 }
+```
 
 ## Replacing netrw
 
