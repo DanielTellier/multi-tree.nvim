@@ -133,6 +133,78 @@ Optional “open in next tab” actions (enabled when `map_next_tab_keys = true`
 
 To customize or disable these, see the “Custom mappings” section.
 
+## Default Configuration
+
+The plugin comes with sensible defaults that work out of the box. Here are all the available options and their default values:
+
+```lua
+{
+  icons = true,                 -- Enable icons via nvim-web-devicons if available
+  show_hidden = false,          -- Show dotfiles and hidden files when true
+  indent = 2,                   -- Indentation size for tree levels (spaces)
+  auto_tab_title = true,        -- Create automatic per-tab titles like "MultiTree-1"
+  set_local_cwd = true,         -- Set window-local working directory (:lcd) to tree root
+  restore_local_cwd_on_close = false, -- Restore previous cwd when closing tree buffer
+  map_next_tab_keys = true,     -- Provide default <leader> mappings for "open in next tab"
+}
+
+## Replacing netrw
+
+MultiTree can completely replace netrw as your default directory browser. This setup will:
+- Disable netrw entirely
+- Open MultiTree when launching Neovim with a directory (`nvim .`)
+- Replace `:edit <directory>` commands with MultiTree
+
+```lua
+{
+  "DanielTellier/multi-tree.nvim",
+  event = "VeryLazy",
+  cmd = { "MultiTree" }, -- calling :MultiTree auto-loads the plugin
+  main = "multi-tree",
+  init = function()
+    -- Disable netrw so directories don't open there.
+    vim.g.loaded_netrw = 1
+    vim.g.loaded_netrwPlugin = 1
+
+    -- Start with a directory: `nvim .` or `nvim path/`.
+    vim.api.nvim_create_autocmd("VimEnter", {
+      callback = function()
+        -- Only hijack when there is exactly one arg and it's a directory.
+        if vim.fn.argc() == 1 then
+          local arg = vim.fn.argv(0)
+          if arg ~= nil and vim.fn.isdirectory(arg) == 1 then
+            -- Optional: set cwd to that directory for the session/tab.
+            -- vim.cmd("cd " .. vim.fn.fnameescape(arg))
+            vim.cmd("MultiTree " .. vim.fn.fnameescape(arg))
+          end
+        end
+      end,
+      once = true,
+    })
+
+    -- Replace :edit . (or :edit <dir>) mid-session in the current window.
+    vim.api.nvim_create_autocmd("BufEnter", {
+      callback = function(ev)
+        -- Avoid loops and only act on real directory buffers.
+        if ev.file == "" then return end
+        if vim.bo[ev.buf].filetype == "multi-tree" then return end
+        if vim.fn.isdirectory(ev.file) == 1 then
+          -- Use schedule to avoid doing too much during the event itself.
+          vim.schedule(function()
+            vim.cmd("MultiTree " .. vim.fn.fnameescape(ev.file))
+          end)
+        end
+      end,
+    })
+  end,
+  opts = {
+    -- your configuration options here
+  },
+}
+```
+
+This configuration ensures MultiTree becomes your primary directory browser while maintaining compatibility with all standard Vim/Neovim directory operations.
+
 ## Configuration
 
 Call setup to adjust defaults:
