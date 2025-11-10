@@ -11,6 +11,10 @@ local defaults = {
   show_hidden = false,
   icons = true,
   indent = 2,
+  auto_tab_title = true, -- Create a per-tab title the first time a tree opens in that tab.
+  map_next_tab_keys = true, -- set to false if users want to provide their own mappings
+  set_local_cwd = true, -- set :lcd to the tree root for the tree window.
+  restore_local_cwd_on_close = false, -- restore previous cwd when closing the tree window.
 }
 
 -- Return a label for a tabpage (used by Heirline).
@@ -214,6 +218,13 @@ local function change_root(node, state)
   }
   load_children(new_root, state.opts.show_hidden)
   state.root_node = new_root
+
+  if state.opts.set_local_cwd then
+    -- Ensure we set local cwd for the tree window.
+    pcall(vim.api.nvim_set_current_win, state.win)
+    vim.cmd("lcd " .. vim.fn.fnameescape(p))
+  end
+
   render(state)
 end
 
@@ -233,6 +244,37 @@ local function open_file(node, how)
   end
 end
 
+local function open_file_in_current_window(state, node, how)
+  if node.type ~= "file" then return end
+  -- The current window is the tree window; its local cwd has already been set in M.open.
+  local escaped = vim.fn.fnameescape(node.path)
+  if how == "vsplit" then
+    vim.cmd("vsplit " .. escaped)
+  elseif how == "split" then
+    vim.cmd("split " .. escaped)
+  elseif how == "tab" then
+    vim.cmd("tabedit " .. escaped)
+  else
+    vim.cmd("edit " .. escaped)
+  end
+end
+
+local function open_file_in_prev_window(state, node)
+  if node.type ~= "file" then return end
+  local prev = vim.fn.winnr("#")
+  if prev ~= 0 then
+    vim.cmd("wincmd p")
+    if state.opts.set_local_cwd and state.root_node and state.root_node.path then
+      vim.cmd("lcd " .. vim.fn.fnameescape(state.root_node.path))
+    end
+    open_file_in_current_window(state, node, "edit")
+    vim.cmd("wincmd p")
+  else
+    -- No previous window; open in the tree window.
+    open_file_in_current_window(state, node, "edit")
+  end
+end
+
 local function attach_mappings(state)
   local buf = state.buf
 
@@ -246,14 +288,7 @@ local function attach_mappings(state)
     if node.type == "dir" then
       toggle(node, state)
     else
-      local prev = vim.fn.winnr("#")
-      if prev ~= 0 then
-        vim.cmd("wincmd p")
-        open_file(node, "edit")
-        vim.cmd("wincmd p")
-      else
-        open_file(node, "edit")
-      end
+      open_file_in_prev_window(state, node)
     end
   end, "Open file or toggle directory.")
 
@@ -290,25 +325,22 @@ local function attach_mappings(state)
 
   nmap("s", function()
     local node = get_node_under_cursor(state)
-    if not node then return end
-    if node.type == "file" then
-      open_file(node, "split")
+    if node and node.type == "file" then
+      open_file_in_current_window(state, node, "split")
     end
   end, "Open file in horizontal split.")
 
   nmap("v", function()
     local node = get_node_under_cursor(state)
-    if not node then return end
-    if node.type == "file" then
-      open_file(node, "vsplit")
+    if node and node.type == "file" then
+      open_file_in_current_window(state, node, "vsplit")
     end
   end, "Open file in vertical split.")
 
   nmap("t", function()
     local node = get_node_under_cursor(state)
-    if not node then return end
-    if node.type == "file" then
-      open_file(node, "tab")
+    if node and node.type == "file" then
+      open_file_in_current_window(state, node, "tab")
     end
   end, "Open file in new tab.")
 
@@ -319,6 +351,32 @@ local function attach_mappings(state)
 
   nmap("r", function() M.refresh(state) end, "Refresh tree.")
   nmap("q", function() M.close(state) end, "Close tree buffer.")
+
+  if state.opts.map_next_tab_keys then
+    nmap("<leader>i", function()
+      M.open_current_node_in_next_tab("edit", false)
+    end, "Open file on next tab.")
+
+    nmap("<leader>I", function()
+      M.open_current_node_in_next_tab("edit", true)
+    end, "Open file on next tab and stay in tree.")
+
+    nmap("<leader>o", function()
+      M.open_current_node_in_next_tab("split", false)
+    end, "Open file in horizontal split on next tab.")
+
+    nmap("<leader>O", function()
+      M.open_current_node_in_next_tab("split", true)
+    end, "Open file in horizontal split on next tab and stay in tree.")
+
+    nmap("<leader>v", function()
+      M.open_current_node_in_next_tab("vsplit", false)
+    end, "Open file in vertical split on next tab.")
+
+    nmap("<leader>V", function()
+      M.open_current_node_in_next_tab("vsplit", true)
+    end, "Open file in vertical split on next tab and stay in tree.")
+  end
 end
 
 -- Create the tree buffer in the given window.
@@ -354,8 +412,10 @@ function M.open(path, opts)
   local buf_title = "MultiTree: " .. root_name
   local buf = create_buffer(win, buf_title)
 
-  -- Ensure per-tab title exists.
-  ensure_tab_title_for_current_tab()
+  -- Create a per-tab title unless explicitly disabled.
+  if state.opts.auto_tab_title ~= false then
+    ensure_tab_title_for_current_tab()
+  end
 
   -- Assign per-tab title if missing.
   local tab = vim.api.nvim_get_current_tabpage()
@@ -370,12 +430,16 @@ function M.open(path, opts)
     opts = vim.tbl_deep_extend("force", defaults, opts or {}),
     root_node = nil,
     line2node = {},
+    prev_cwd = vim.fn.getcwd(), -- store current cwd to optionally restore later
   }
 
-  local abs = normalize_path(path)
+  if state.opts.set_local_cwd then
+    vim.cmd("lcd " .. vim.fn.fnameescape(abs))
+  end
+
   local root = {
     path = abs,
-    name = basename_safe(abs),
+    name = root_name,
     type = "dir",
     children = nil,
     expanded = true,
@@ -390,9 +454,14 @@ function M.open(path, opts)
   render(state)
 
   vim.api.nvim_create_autocmd({ "BufWipeout", "BufUnload" }, {
-    buffer = buf,
+    buffer = state.buf,
     callback = function()
-      M.states[buf] = nil
+      -- Optional: restore local cwd when the tree buffer is closed.
+      if state.opts.restore_local_cwd_on_close and state.prev_cwd then
+        pcall(vim.api.nvim_set_current_win, state.win)
+        pcall(vim.cmd, "lcd " .. vim.fn.fnameescape(state.prev_cwd))
+      end
+      M.states[state.buf] = nil
     end,
   })
 end
@@ -437,6 +506,90 @@ end
 function M.close_current()
   local state = M.states[vim.api.nvim_get_current_buf()]
   if state then M.close(state) end
+end
+
+-- Open a path in the next tab (creating it if necessary).
+-- how: "edit" | "split" | "vsplit"
+-- stay: when true, return to the original tab after opening.
+local function open_path_in_next_tab(path, how, stay)
+  local cur = vim.fn.tabpagenr()
+  local next_tab = cur + 1
+  local last = vim.fn.tabpagenr("$")
+
+  local effective = how
+  if next_tab > last then
+    vim.cmd("tabnew")
+    effective = "edit"
+  else
+    vim.cmd(("%dtabnext"):format(next_tab))
+  end
+
+  local escaped = vim.fn.fnameescape(path)
+  if effective == "vsplit" then
+    vim.cmd("vsplit " .. escaped)
+  elseif effective == "split" then
+    vim.cmd("split " .. escaped)
+  else
+    vim.cmd("edit " .. escaped)
+  end
+
+  if stay then
+    local prev = vim.fn.tabpagenr("#")
+    if prev ~= 0 then
+      vim.cmd(("%dtabnext"):format(prev))
+    end
+  end
+end
+
+local function open_path_in_next_tab_with_cwd(path, cwd, how, stay)
+  local cur = vim.fn.tabpagenr()
+  local next_tab = cur + 1
+  local last = vim.fn.tabpagenr("$")
+
+  local effective = how
+  if next_tab > last then
+    vim.cmd("tabnew")
+    effective = "edit"
+  else
+    vim.cmd(("%dtabnext"):format(next_tab))
+  end
+
+  if cwd and cwd ~= "" then
+    vim.cmd("lcd " .. vim.fn.fnameescape(cwd))
+  end
+
+  local escaped = vim.fn.fnameescape(path)
+  if effective == "vsplit" then
+    vim.cmd("vsplit " .. escaped)
+  elseif effective == "split" then
+    vim.cmd("split " .. escaped)
+  else
+    vim.cmd("edit " .. escaped)
+  end
+
+  if stay then
+    local prev = vim.fn.tabpagenr("#")
+    if prev ~= 0 then
+      vim.cmd(("%dtabnext"):format(prev))
+    end
+  end
+end
+
+-- Public: open the node under cursor (in the current MultiTree buffer) in the next tab.
+-- how: "edit" | "split" | "vsplit"
+-- stay: boolean
+function M.open_current_node_in_next_tab(how, stay)
+  local buf = vim.api.nvim_get_current_buf()
+  local state = M.states[buf]
+  if not state then return end
+  local node = get_node_under_cursor(state)
+  if not node or node.type ~= "file" then return end
+  open_path_in_next_tab_with_cwd(node.path, state.root_node and state.root_node.path or nil, how, stay)
+end
+
+-- Optional: expose raw path opener for users who want to bypass cursor node.
+function M.open_path_in_next_tab(path, how, stay)
+  open_path_in_next_tab(path, how, stay)
 end
 
 function M.setup(opts)
