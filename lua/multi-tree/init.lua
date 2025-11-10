@@ -412,18 +412,6 @@ function M.open(path, opts)
   local buf_title = "MultiTree: " .. root_name
   local buf = create_buffer(win, buf_title)
 
-  -- Create a per-tab title unless explicitly disabled.
-  if state.opts.auto_tab_title ~= false then
-    ensure_tab_title_for_current_tab()
-  end
-
-  -- Assign per-tab title if missing.
-  local tab = vim.api.nvim_get_current_tabpage()
-  if not M.tab_titles[tab] then
-    M._tab_counter = M._tab_counter + 1
-    M.tab_titles[tab] = string.format("MultiTree-%d", M._tab_counter)
-  end
-
   local state = {
     win = win,
     buf = buf,
@@ -432,6 +420,11 @@ function M.open(path, opts)
     line2node = {},
     prev_cwd = vim.fn.getcwd(), -- store current cwd to optionally restore later
   }
+
+  -- Create a per-tab title unless explicitly disabled.
+  if state.opts.auto_tab_title ~= false then
+    ensure_tab_title_for_current_tab()
+  end
 
   if state.opts.set_local_cwd then
     vim.cmd("lcd " .. vim.fn.fnameescape(abs))
