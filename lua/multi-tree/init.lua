@@ -208,6 +208,16 @@ end
 local function change_root(node, state)
   if node.type ~= "dir" then return end
   local npath = normalize_path(node.path)
+
+  -- If another tree already has this root, focus it and bail.
+  do
+    local existing = find_existing_tree_for_path(p)
+    if existing and existing.buf ~= state.buf then
+      focus_tree_window(existing)
+      return
+    end
+  end
+
   local new_root = {
     path = npath,
     name = basename_safe(npath),
@@ -405,17 +415,58 @@ local function create_buffer(win, title, listed)
   return buf
 end
 
+-- Find an existing tree instance for the normalized path.
+-- Prefer one in the current tab; otherwise return the first valid match.
+local function find_existing_tree_for_path(abs)
+  local current_tab = vim.api.nvim_get_current_tabpage()
+  local candidate_any
+  for _, st in pairs(M.states) do
+    if st.root_node and st.root_node.path and vim.api.nvim_win_is_valid(st.win) then
+      if normalize_path(st.root_node.path) == abs then
+        local tab = vim.api.nvim_win_get_tabpage(st.win)
+        if tab == current_tab then
+          return st
+        end
+        candidate_any = candidate_any or st
+      end
+    end
+  end
+  return candidate_any
+end
+
+-- Focus the window for a given tree state, switching tabs if needed.
+local function focus_tree_window(state)
+  if not state or not vim.api.nvim_win_is_valid(state.win) then
+    return false
+  end
+  local tab = vim.api.nvim_win_get_tabpage(state.win)
+  local nr = vim.api.nvim_tabpage_get_number(tab)
+  vim.cmd(("%dtabnext"):format(nr))
+  vim.api.nvim_set_current_win(state.win)
+  return true
+end
+
 function M.open(path, opts)
   local win = vim.api.nvim_get_current_win()
   local abs = normalize_path(path)
   local root_name = basename_safe(abs)
   local buf_title = "MultiTree: " .. root_name
-  local buf = create_buffer(win, buf_title)
 
+  local merged_opts = vim.tbl_deep_extend("force", defaults, opts or {})
+
+  -- Enforce uniqueness: focus existing tree for this path if present.
+  do
+    local existing = find_existing_tree_for_path(abs)
+    if existing and focus_tree_window(existing) then
+      return
+    end
+  end
+
+  local buf = create_buffer(win, buf_title)
   local state = {
     win = win,
     buf = buf,
-    opts = vim.tbl_deep_extend("force", defaults, opts or {}),
+    opts = merged_opts,
     root_node = nil,
     line2node = {},
     prev_cwd = vim.fn.getcwd(), -- store current cwd to optionally restore later
