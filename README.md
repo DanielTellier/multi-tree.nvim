@@ -186,6 +186,74 @@ By default, MultiTree sets a window-local working directory (`:lcd`) equal to th
 
 If you prefer per-tab rather than per-window cwd, use `:tcd` in your own fork or local patch.
 
+## Sessions
+
+Neovim sessions don’t reliably restore scratch/plugin windows. To make MultiTree “just work” with sessions, record which tree roots are open when saving and reopen them after the session loads.
+
+- Add globals to your session file:
+  - `vim.opt.sessionoptions:append("globals")`.
+
+Save open MultiTree roots on exit:
+
+```lua
+vim.opt.sessionoptions:append("globals")
+
+vim.api.nvim_create_autocmd("VimLeavePre", {
+  callback = function()
+    local ok, mt = pcall(require, "multi-tree")
+    if not ok or not mt.states then return end
+    local roots_by_tab = {}
+    for _, st in pairs(mt.states) do
+      if st.root_node and st.root_node.path and vim.api.nvim_win_is_valid(st.win) then
+        local tab = vim.api.nvim_win_get_tabpage(st.win)
+        local tnr = vim.api.nvim_tabpage_get_number(tab)
+        roots_by_tab[tnr] = roots_by_tab[tnr] or {}
+        table.insert(roots_by_tab[tnr], st.root_node.path)
+      end
+    end
+    vim.g.multi_tree_session = roots_by_tab
+  end,
+})
+```
+
+Reopen trees after the session loads:
+
+```lua
+vim.api.nvim_create_autocmd("SessionLoadPost", {
+  callback = function()
+    local ok, mt = pcall(require, "multi-tree")
+    if not ok then return end
+    local roots = vim.g.multi_tree_session
+    if type(roots) ~= "table" then return end
+
+    local tab_numbers = {}
+    for tnr, _ in pairs(roots) do table.insert(tab_numbers, tnr) end
+    table.sort(tab_numbers)
+
+    local existing_tabs = vim.api.nvim_list_tabpages()
+    local max_tab = #existing_tabs
+
+    for _, tnr in ipairs(tab_numbers) do
+      if tnr > max_tab then
+        vim.cmd("tabnew")
+        max_tab = max_tab + 1
+      else
+        vim.cmd(("%dtabnext"):format(tnr))
+      end
+      for i, path in ipairs(roots[tnr]) do
+        if i > 1 then vim.cmd("vert vsplit") end
+        mt.open(path) -- If already open, MultiTree focuses it due to uniqueness.
+      end
+    end
+  end,
+})
+```
+
+Notes:
+- If you use a session manager (for example, persistence.nvim, auto-session), hook their “session loaded” event similarly and call the same reopen logic.
+- If you prefer not to store globals in the session, write `vim.g.multi_tree_session` to a file on exit and read it back after load.
+- MultiTree enforces one instance per directory, so duplicate paths will focus the existing tree rather than creating another.
+
 ## Custom mappings
 
 Disable the default “open in next tab” mappings and define your own:
