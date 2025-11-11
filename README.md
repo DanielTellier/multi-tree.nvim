@@ -1,6 +1,31 @@
 # multi-tree.nvim
 
-MultiTree is a lightweight Neovim plugin that lets you open multiple, independent directory trees side-by-side within the same tab. Each tree instance is window-local, so changing the root or expanding nodes in one window will not affect the others. It’s inspired by the UX and architecture of nvim-tree.lua and neo-tree.nvim.
+MultiTree is a lightweight Neovim plugin that lets you open multiple, independent
+directory trees side-by-side within the same tab. Each tree instance is window-local,
+so changing the root or expanding nodes in one window will not affect the others.
+It’s inspired by the UX and architecture of nvim-tree.lua and neo-tree.nvim.
+
+## Table of Contents
+
+- [Features](#features)
+- [Installation](#installation)
+  - [lazy.nvim example (recommended)](#lazynvim-example-recommended)
+  - [Manual installation](#manual-installation)
+- [Post-install: Try it out](#post-install-try-it-out)
+- [Commands](#commands)
+- [Keymaps](#keymaps)
+- [Default Configuration](#default-configuration)
+- [Replacing netrw](#replacing-netrw)
+- [Configuration](#configuration)
+- [Heirline Tab Titles](#heirline-tab-titles)
+- [Window-local CWD](#window-local-cwd)
+- [Sessions](#sessions)
+- [Custom mappings](#custom-mappings)
+- [Tips](#tips)
+- [Troubleshooting](#troubleshooting)
+- [Acknowledgements](#acknowledgements)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Features
 
@@ -112,7 +137,8 @@ MultiTree is a lightweight Neovim plugin that lets you open multiple, independen
 
 Inside a MultiTree buffer:
 
-- Enter: Toggle a directory or open a file. The plugin attempts to open files in the previously focused window and sets that window’s local cwd to the tree’s root if enabled.
+- Enter: Toggle a directory or open a file. The plugin attempts to open files in the
+  previously focused window and sets that window’s local cwd to the tree’s root if enabled.
 - l: Expand a directory or open a file.
 - h: Collapse a directory or collapse its parent.
 - v: Open a file in a vertical split (sets local cwd if enabled).
@@ -143,7 +169,8 @@ To customize or disable these, see the “Custom mappings” section.
 
 ## Default Configuration
 
-The plugin comes with sensible defaults that work out of the box. Here are all the available options and their default values:
+The plugin comes with sensible defaults that work out of the box.
+Here are all the available options and their default values:
 
 ```lua
 {
@@ -212,7 +239,8 @@ MultiTree can completely replace netrw as your default directory browser. This s
 }
 ```
 
-This configuration ensures MultiTree becomes your primary directory browser while maintaining compatibility with all standard Vim/Neovim directory operations.
+This configuration ensures MultiTree becomes your primary directory browser while
+maintaining compatibility with all standard Vim/Neovim directory operations.
 
 ## Configuration
 
@@ -244,24 +272,30 @@ vim.api.nvim_create_autocmd("FileType", {
 })
 ```
 
-Optional: control whether the tree buffer is “listed” in Neovim’s buffer list. Unlisted buffers won’t appear in `:ls`, won’t be cycled by `:bnext/:bprev`, and are typically hidden by bufferline plugins. This is recommended for explorer sidebars.
+Optional: control whether the tree buffer is “listed” in Neovim’s buffer list.
+Unlisted buffers won’t appear in `:ls`, won’t be cycled by `:bnext/:bprev`, and are
+typically hidden by bufferline plugins. This is recommended for explorer sidebars.
 
 ## Heirline Tab Titles
 
 MultiTree provides per-tab titles and a small API for Heirline:
 
-- The plugin tracks a title for tabs where a tree is opened for the first time, like “MultiTree-1,” “MultiTree-2,” etc. This behavior is controlled by `auto_tab_title`.
-- Heirline can call `require("multi-tree").tab_title(tab)` to render these titles. If no title is set, it falls back to the active buffer’s name in that tab.
+- The plugin tracks a title for tabs where a tree is opened for the first time,
+  like “MultiTree-1,” “MultiTree-2,” etc. This behavior is controlled by `auto_tab_title`.
+- Heirline can call `require("multi-tree").tab_title(tab)` to render these titles.
+  If no title is set, it falls back to the active buffer’s name in that tab.
 - Rename the current tab’s title with `:MultiTreeTabRename <name>.`
 
 See the lazy.nvim example above for an integrated Heirline configuration.
 
 ## Window-local CWD
 
-By default, MultiTree sets a window-local working directory (`:lcd`) equal to the tree’s root for the tree window:
+By default, MultiTree sets a window-local working directory (`:lcd`) equal to the
+tree’s root for the tree window:
 
 - When you change the tree’s root, the window-local cwd updates accordingly.
-- When opening files (Enter, split, vsplit, tab, or “open in next tab”), the target window’s local cwd is set to the tree’s root first.
+- When opening files (Enter, split, vsplit, tab, or “open in next tab”), the target
+  window’s local cwd is set to the tree’s root first.
 - To disable this behavior, set `set_local_cwd = false`.
 - To restore the previous cwd when the tree buffer closes, set `restore_local_cwd_on_close = true`.
 
@@ -269,7 +303,9 @@ If you prefer per-tab rather than per-window cwd, use `:tcd` in your own fork or
 
 ## Sessions
 
-Neovim sessions don’t reliably restore scratch/plugin windows. To make MultiTree “just work” with sessions, record which tree roots are open when saving and reopen them after the session loads.
+Neovim sessions don’t reliably restore scratch/plugin windows. To make MultiTree
+“just work” with sessions, record which tree roots are open when saving and reopen
+them after the session loads.
 
 - Add globals to your session file:
   - `vim.opt.sessionoptions:append("globals")`.
@@ -331,9 +367,12 @@ vim.api.nvim_create_autocmd("SessionLoadPost", {
 ```
 
 Notes:
-- If you use a session manager (for example, persistence.nvim, auto-session), hook their “session loaded” event similarly and call the same reopen logic.
-- If you prefer not to store globals in the session, write `vim.g.multi_tree_session` to a file on exit and read it back after load.
-- MultiTree enforces one instance per directory, so duplicate paths will focus the existing tree rather than creating another.
+- If you use a session manager (for example, persistence.nvim, auto-session), hook
+  their “session loaded” event similarly and call the same reopen logic.
+- If you prefer not to store globals in the session, write `vim.g.multi_tree_session`
+  to a file on exit and read it back after load.
+- MultiTree enforces one instance per directory, so duplicate paths will focus the
+  existing tree rather than creating another.
 
 ## Custom mappings
 
@@ -394,16 +433,25 @@ vim.api.nvim_create_autocmd("FileType", {
 
 ## Tips
 
-- Open files from a tree in another window: focus the target window once (for example, `Ctrl-w p`), then press Enter on a file in the tree.
-- Keep trees independent: each tree buffer is window-local. Changing the root or expanding nodes in one tree does not affect other trees.
-- Use absolute paths or robust path expansions for consistent root labeling. Paths with trailing slashes are normalized internally.
+- Open files from a tree in another window: focus the target window once
+  (for example, `Ctrl-w p`), then press Enter on a file in the tree.
+- Keep trees independent: each tree buffer is window-local. Changing the root or
+  expanding nodes in one tree does not affect other trees.
+- Use absolute paths or robust path expansions for consistent root labeling. Paths
+  with trailing slashes are normalized internally.
 
 ## Troubleshooting
 
-- “W10: Warning: Changing a readonly file.” MultiTree sets tree buffers modifiable only during rendering. Ensure the tree buffer is not set to `readonly = true`.
-- Root name missing with trailing slash (for example, `:MultiTree lua/`). Paths are normalized to strip trailing separators, and the root label is derived safely; update to the latest version if this ever occurs.
-- Tabline conflicts. Only one thing should set `vim.o.tabline`. If you use a tabline plugin such as Heirline, do not let MultiTree set `vim.o.tabline`; integrate titles through the plugin’s config.
-- PWD not applied. Ensure `set_local_cwd = true`. For “open in next tab,” MultiTree sets the local cwd in the destination tab’s window before opening.
+- “W10: Warning: Changing a readonly file.” MultiTree sets tree buffers modifiable
+  only during rendering. Ensure the tree buffer is not set to `readonly = true`.
+- Root name missing with trailing slash (for example, `:MultiTree lua/`). Paths are
+  normalized to strip trailing separators, and the root label is derived safely;
+  update to the latest version if this ever occurs.
+- Tabline conflicts. Only one thing should set `vim.o.tabline`. If you use a tabline
+  plugin such as Heirline, do not let MultiTree set `vim.o.tabline`; integrate titles
+  through the plugin’s config.
+- PWD not applied. Ensure `set_local_cwd = true`. For “open in next tab,” MultiTree
+  sets the local cwd in the destination tab’s window before opening.
 
 ## Acknowledgements
 
@@ -413,7 +461,8 @@ vim.api.nvim_create_autocmd("FileType", {
 
 ## Contributing
 
-Issues and pull requests are welcome. Please open issues for bugs, performance problems, or UX improvements, and include steps to reproduce when possible.
+Issues and pull requests are welcome. Please open issues for bugs, performance problems,
+or UX improvements, and include steps to reproduce when possible.
 
 ## License
 
