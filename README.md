@@ -11,7 +11,6 @@ It’s inspired by the UX and architecture of nvim-tree.lua and neo-tree.nvim.
 - [Installation](#installation)
   - [lazy.nvim example (recommended)](#lazynvim-example-recommended)
   - [Manual installation](#manual-installation)
-- [Post-install: Try it out](#post-install-try-it-out)
 - [Commands](#commands)
 - [Keymaps](#keymaps)
 - [Default Configuration](#default-configuration)
@@ -117,14 +116,6 @@ It’s inspired by the UX and architecture of nvim-tree.lua and neo-tree.nvim.
 - Place plugin file at: ~/.config/nvim/plugin/multi-tree.lua.
 - Place module file at: ~/.config/nvim/lua/multi-tree/init.lua.
 - Restart Neovim.
-
-## Post-install: Try it out
-
-- Open a tree in the current window: `:MultiTree`.
-- Open a tree rooted at a specific directory: `:MultiTree /path/to/dir`.
-- Open multiple trees side-by-side in one tab:
-  - `:vsplit | :MultiTree ~/projects/A`.
-  - `Ctrl-w l | :vsplit | :MultiTree ~/projects/B`.
 
 ## Commands
 
