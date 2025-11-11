@@ -6,6 +6,9 @@ local has_devicons, devicons = pcall(require, "nvim-web-devicons")
 M.states = {}
 M.tab_titles = M.tab_titles or {}
 M._tab_counter = M._tab_counter or 0
+M.bookmarks = M.bookmarks or {}
+M.sort_mode = M.sort_mode or "name" -- "name" or "modified"
+M.dir_history = M.dir_history or {} -- per-state history tracking
 
 local defaults = {
   show_hidden = false,
@@ -99,7 +102,7 @@ local function icon_for(node, default)
   return " "
 end
 
-local function scandir(path, show_hidden)
+local function scandir(path, show_hidden, sort_mode)
   local items = {}
   local iter = uv.fs_scandir(path)
   if not iter then return items end
@@ -120,21 +123,26 @@ local function scandir(path, show_hidden)
         children = nil,
         expanded = false,
         depth = 0,
+        mtime = stat and stat.mtime.sec or 0,
       })
     end
   end
 
   table.sort(items, function(a, b)
     if a.type ~= b.type then return a.type == "dir" end
-    return a.name:lower() < b.name:lower()
+    if sort_mode == "modified" then
+      return a.mtime > b.mtime
+    else
+      return a.name:lower() < b.name:lower()
+    end
   end)
 
   return items
 end
 
-local function load_children(node, show_hidden)
+local function load_children(node, show_hidden, sort_mode)
   if node.type ~= "dir" then return end
-  node.children = scandir(node.path, show_hidden)
+  node.children = scandir(node.path, show_hidden, sort_mode or "name")
   for _, child in ipairs(node.children) do
     child.depth = node.depth + 1
   end
@@ -194,7 +202,7 @@ end
 local function ensure_children_loaded(node, state)
   if node.type ~= "dir" then return end
   if node.children == nil then
-    load_children(node, state.opts.show_hidden)
+    load_children(node, state.opts.show_hidden, state.sort_mode or "name")
   end
 end
 
@@ -209,9 +217,16 @@ local function change_root(node, state)
   if node.type ~= "dir" then return end
   local npath = normalize_path(node.path)
 
+  -- Add to history
+  if not state.dir_history then state.dir_history = {} end
+  if state.root_node and state.root_node.path then
+    table.insert(state.dir_history, state.root_node.path)
+  end
+  state.history_index = #state.dir_history + 1
+
   -- If another tree already has this root, focus it and bail.
   do
-    local existing = find_existing_tree_for_path(p)
+    local existing = find_existing_tree_for_path(npath)
     if existing and existing.buf ~= state.buf then
       focus_tree_window(existing)
       return
@@ -226,13 +241,13 @@ local function change_root(node, state)
     expanded = true,
     depth = 0,
   }
-  load_children(new_root, state.opts.show_hidden)
+  load_children(new_root, state.opts.show_hidden, state.sort_mode or "name")
   state.root_node = new_root
 
   if state.opts.set_local_cwd then
     -- Ensure we set local cwd for the tree window.
     pcall(vim.api.nvim_set_current_win, state.win)
-    vim.cmd("lcd " .. vim.fn.fnameescape(p))
+    vim.cmd("lcd " .. vim.fn.fnameescape(npath))
   end
 
   render(state)
@@ -266,6 +281,299 @@ local function open_file_in_current_window(state, node, how)
     vim.cmd("tabedit " .. escaped)
   else
     vim.cmd("edit " .. escaped)
+  end
+end
+
+local function go_up_directory(state)
+  if not state.root_node then return end
+  local parent = vim.fn.fnamemodify(state.root_node.path, ":h")
+  if parent ~= state.root_node.path then
+    local parent_node = {
+      path = parent,
+      name = basename_safe(parent),
+      type = "dir",
+    }
+    change_root(parent_node, state)
+  end
+end
+
+local function toggle_sort(state)
+  state.sort_mode = state.sort_mode == "name" and "modified" or "name"
+  M.refresh(state)
+  local msg = "Sort: " .. (state.sort_mode == "name" and "Name" or "Modified")
+  vim.notify(msg, vim.log.levels.INFO)
+end
+
+local function create_file(state)
+  local node = get_node_under_cursor(state)
+  if not node then return end
+
+  local dir_path = node.type == "dir" and node.path or vim.fn.fnamemodify(node.path, ":h")
+
+  vim.ui.input({ prompt = "New file name: " }, function(name)
+    if not name or name == "" then return end
+
+    local file_path = dir_path .. "/" .. name
+    local file = io.open(file_path, "w")
+    if file then
+      file:close()
+      M.refresh(state)
+      vim.notify("Created: " .. name, vim.log.levels.INFO)
+    else
+      vim.notify("Failed to create: " .. name, vim.log.levels.ERROR)
+    end
+  end)
+end
+
+local function create_directory(state)
+  local node = get_node_under_cursor(state)
+  if not node then return end
+
+  local dir_path = node.type == "dir" and node.path or vim.fn.fnamemodify(node.path, ":h")
+
+  vim.ui.input({ prompt = "New directory name: " }, function(name)
+    if not name or name == "" then return end
+
+    local new_dir = dir_path .. "/" .. name
+    local ok = vim.fn.mkdir(new_dir, "p")
+    if ok == 1 then
+      M.refresh(state)
+      vim.notify("Created directory: " .. name, vim.log.levels.INFO)
+    else
+      vim.notify("Failed to create directory: " .. name, vim.log.levels.ERROR)
+    end
+  end)
+end
+
+local function rename_file(state)
+  local node = get_node_under_cursor(state)
+  if not node then return end
+
+  vim.ui.input({
+    prompt = "Rename to: ",
+    default = node.name
+  }, function(new_name)
+    if not new_name or new_name == "" or new_name == node.name then return end
+
+    local dir = vim.fn.fnamemodify(node.path, ":h")
+    local new_path = dir .. "/" .. new_name
+
+    local ok = vim.fn.rename(node.path, new_path)
+    if ok == 0 then
+      M.refresh(state)
+      vim.notify("Renamed: " .. node.name .. " -> " .. new_name, vim.log.levels.INFO)
+    else
+      vim.notify("Failed to rename: " .. node.name, vim.log.levels.ERROR)
+    end
+  end)
+end
+
+local function delete_file(state)
+  local node = get_node_under_cursor(state)
+  if not node then return end
+
+  local prompt = string.format("Delete %s '%s'? (y/N): ",
+    node.type == "dir" and "directory" or "file", node.name)
+
+  vim.ui.input({ prompt = prompt }, function(input)
+    if input and input:lower() == "y" then
+      local ok
+      if node.type == "dir" then
+        ok = vim.fn.delete(node.path, "rf") -- recursive force
+      else
+        ok = vim.fn.delete(node.path)
+      end
+
+      if ok == 0 then
+        M.refresh(state)
+        vim.notify("Deleted: " .. node.name, vim.log.levels.INFO)
+      else
+        vim.notify("Failed to delete: " .. node.name, vim.log.levels.ERROR)
+      end
+    end
+  end)
+end
+
+local function add_bookmark(state)
+  local node = get_node_under_cursor(state)
+  if not node then return end
+
+  vim.ui.input({ prompt = "Bookmark name (or press Enter for default): " }, function(name)
+    local bookmark_name = name and name ~= "" and name or node.name
+    M.bookmarks[bookmark_name] = node.path
+    vim.notify("Bookmarked: " .. bookmark_name .. " -> " .. node.path, vim.log.levels.INFO)
+  end)
+end
+
+local function delete_bookmark(state, count)
+  if not next(M.bookmarks) then
+    vim.notify("No bookmarks to delete", vim.log.levels.WARN)
+    return
+  end
+
+  if count and count > 0 then
+    local bookmark_list = {}
+    for name, _ in pairs(M.bookmarks) do
+      table.insert(bookmark_list, name)
+    end
+    table.sort(bookmark_list)
+
+    if count <= #bookmark_list then
+      local bookmark_name = bookmark_list[count]
+      M.bookmarks[bookmark_name] = nil
+      vim.notify("Deleted bookmark: " .. bookmark_name, vim.log.levels.INFO)
+    else
+      vim.notify("Invalid bookmark number", vim.log.levels.ERROR)
+    end
+  else
+    -- Show list and let user pick
+    local items = {}
+    for name, path in pairs(M.bookmarks) do
+      table.insert(items, name .. " -> " .. path)
+    end
+
+    if #items == 0 then
+      vim.notify("No bookmarks found", vim.log.levels.WARN)
+      return
+    end
+
+    vim.ui.select(items, {
+      prompt = "Delete bookmark:",
+    }, function(choice)
+      if choice then
+        local bookmark_name = choice:match("^([^%s]+)")
+        M.bookmarks[bookmark_name] = nil
+        vim.notify("Deleted bookmark: " .. bookmark_name, vim.log.levels.INFO)
+      end
+    end)
+  end
+end
+
+local function list_bookmarks()
+  if not next(M.bookmarks) then
+    vim.notify("No bookmarks found", vim.log.levels.INFO)
+    return
+  end
+
+  local lines = { "Bookmarks:" }
+  local i = 1
+  for name, path in pairs(M.bookmarks) do
+    table.insert(lines, string.format("%d. %s -> %s", i, name, path))
+    i = i + 1
+  end
+
+  vim.notify(table.concat(lines, "\n"), vim.log.levels.INFO)
+end
+
+local function goto_bookmark(state, count)
+  if not next(M.bookmarks) then
+    vim.notify("No bookmarks found", vim.log.levels.WARN)
+    return
+  end
+
+  if count and count > 0 then
+    local bookmark_list = {}
+    for name, path in pairs(M.bookmarks) do
+      table.insert(bookmark_list, { name = name, path = path })
+    end
+    table.sort(bookmark_list, function(a, b) return a.name < b.name end)
+
+    if count <= #bookmark_list then
+      local bookmark = bookmark_list[count]
+      local bookmark_node = {
+        path = bookmark.path,
+        name = basename_safe(bookmark.path),
+        type = "dir",
+      }
+      change_root(bookmark_node, state)
+      vim.notify("Opened bookmark: " .. bookmark.name, vim.log.levels.INFO)
+    else
+      vim.notify("Invalid bookmark number", vim.log.levels.ERROR)
+    end
+  else
+    -- Show selection menu
+    local items = {}
+    local bookmark_map = {}
+    for name, path in pairs(M.bookmarks) do
+      local display = name .. " -> " .. path
+      table.insert(items, display)
+      bookmark_map[display] = { name = name, path = path }
+    end
+
+    vim.ui.select(items, {
+      prompt = "Go to bookmark:",
+    }, function(choice)
+      if choice then
+        local bookmark = bookmark_map[choice]
+        local bookmark_node = {
+          path = bookmark.path,
+          name = basename_safe(bookmark.path),
+          type = "dir",
+        }
+        change_root(bookmark_node, state)
+        vim.notify("Opened bookmark: " .. bookmark.name, vim.log.levels.INFO)
+      end
+    end)
+  end
+end
+
+local function go_to_predecessor(state)
+  if not state.dir_history or #state.dir_history == 0 then
+    vim.notify("No previous directory", vim.log.levels.WARN)
+    return
+  end
+
+  state.history_index = state.history_index or #state.dir_history + 1
+
+  if state.history_index > 1 then
+    state.history_index = state.history_index - 1
+    local path = state.dir_history[state.history_index]
+    local prev_node = {
+      path = path,
+      name = basename_safe(path),
+      type = "dir",
+    }
+
+    -- Don't add to history when navigating history
+    local old_history = state.dir_history
+    local old_index = state.history_index
+    change_root(prev_node, state)
+    state.dir_history = old_history
+    state.history_index = old_index
+
+    vim.notify("Previous directory: " .. basename_safe(path), vim.log.levels.INFO)
+  else
+    vim.notify("Already at oldest directory", vim.log.levels.WARN)
+  end
+end
+
+local function go_to_successor(state)
+  if not state.dir_history or #state.dir_history == 0 then
+    vim.notify("No next directory", vim.log.levels.WARN)
+    return
+  end
+
+  state.history_index = state.history_index or #state.dir_history + 1
+
+  if state.history_index < #state.dir_history then
+    state.history_index = state.history_index + 1
+    local path = state.dir_history[state.history_index]
+    local next_node = {
+      path = path,
+      name = basename_safe(path),
+      type = "dir",
+    }
+
+    -- Don't add to history when navigating history
+    local old_history = state.dir_history
+    local old_index = state.history_index
+    change_root(next_node, state)
+    state.dir_history = old_history
+    state.history_index = old_index
+
+    vim.notify("Next directory: " .. basename_safe(path), vim.log.levels.INFO)
+  else
+    vim.notify("Already at newest directory", vim.log.levels.WARN)
   end
 end
 
@@ -359,8 +667,27 @@ local function attach_mappings(state)
     if node then change_root(node, state) end
   end, "Change root to selected directory.")
 
+  -- Netrw-style mappings
   nmap("r", function() M.refresh(state) end, "Refresh tree.")
   nmap("q", function() M.close(state) end, "Close tree buffer.")
+  nmap("-", function() go_up_directory(state) end, "Go up directory.")
+  nmap("s", function() toggle_sort(state) end, "Toggle sort mode.")
+  nmap("%", function() create_file(state) end, "Create new file.")
+  nmap("d", function() create_directory(state) end, "Create new directory.")
+  nmap("R", function() rename_file(state) end, "Rename file/directory.")
+  nmap("D", function() delete_file(state) end, "Delete file/directory.")
+  nmap("mb", function() add_bookmark(state) end, "Bookmark current file/directory.")
+  nmap("mB", function()
+    local count = vim.v.count > 0 and vim.v.count or nil
+    delete_bookmark(state, count)
+  end, "Delete bookmark.")
+  nmap("qb", function() list_bookmarks() end, "List bookmarks.")
+  nmap("gb", function()
+    local count = vim.v.count > 0 and vim.v.count or nil
+    goto_bookmark(state, count)
+  end, "Go to bookmark.")
+  nmap("u", function() go_to_predecessor(state) end, "Go to previous directory.")
+  nmap("U", function() go_to_successor(state) end, "Go to next directory.")
 
   if state.opts.map_next_tab_keys then
     nmap("<leader>i", function()
@@ -470,6 +797,9 @@ function M.open(path, opts)
     root_node = nil,
     line2node = {},
     prev_cwd = vim.fn.getcwd(), -- store current cwd to optionally restore later
+    sort_mode = "name", -- default sort mode
+    dir_history = {}, -- directory navigation history
+    history_index = 1, -- current position in history
   }
 
   -- Create a per-tab title unless explicitly disabled.
@@ -490,7 +820,7 @@ function M.open(path, opts)
     depth = 0,
   }
 
-  load_children(root, state.opts.show_hidden)
+  load_children(root, state.opts.show_hidden, state.sort_mode)
   state.root_node = root
 
   M.states[buf] = state
@@ -516,7 +846,7 @@ function M.refresh(state)
   local function refresh_node(node)
     if node.type ~= "dir" then return end
     local was_expanded = node.expanded
-    node.children = scandir(node.path, state.opts.show_hidden)
+    node.children = scandir(node.path, state.opts.show_hidden, state.sort_mode or "name")
     for _, c in ipairs(node.children) do
       c.depth = node.depth + 1
       c.expanded = false
