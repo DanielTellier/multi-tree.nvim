@@ -284,19 +284,6 @@ local function open_file_in_current_window(state, node, how)
   end
 end
 
-local function go_up_directory(state)
-  if not state.root_node then return end
-  local parent = vim.fn.fnamemodify(state.root_node.path, ":h")
-  if parent ~= state.root_node.path then
-    local parent_node = {
-      path = parent,
-      name = basename_safe(parent),
-      type = "dir",
-    }
-    change_root(parent_node, state)
-  end
-end
-
 local function toggle_sort(state)
   state.sort_mode = state.sort_mode == "name" and "modified" or "name"
   M.refresh(state)
@@ -607,10 +594,10 @@ local function attach_mappings(state)
     if node then change_root(node, state) end
   end, "Change root to selected directory.")
 
-  -- Netrw-style mappings
   nmap("r", function() M.refresh(state) end, "Refresh tree.")
   nmap("q", function() M.close(state) end, "Close tree buffer.")
-  nmap("-", function() go_up_directory(state) end, "Go up directory.")
+
+  -- Netrw-style mappings
   nmap("s", function() toggle_sort(state) end, "Toggle sort mode.")
   nmap("%", function() create_file(state) end, "Create new file.")
   nmap("d", function() create_directory(state) end, "Create new directory.")

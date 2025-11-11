@@ -124,7 +124,6 @@ Inside a MultiTree buffer:
 
 Netrw-style file operations:
 
-- -: Go up directory (parent directory).
 - s: Toggle sort mode between name and modification time.
 - %: Create new file in current/selected directory.
 - d: Create new directory in current/selected directory.
