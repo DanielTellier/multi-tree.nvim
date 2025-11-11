@@ -517,66 +517,6 @@ local function goto_bookmark(state, count)
   end
 end
 
-local function go_to_predecessor(state)
-  if not state.dir_history or #state.dir_history == 0 then
-    vim.notify("No previous directory", vim.log.levels.WARN)
-    return
-  end
-
-  state.history_index = state.history_index or #state.dir_history + 1
-
-  if state.history_index > 1 then
-    state.history_index = state.history_index - 1
-    local path = state.dir_history[state.history_index]
-    local prev_node = {
-      path = path,
-      name = basename_safe(path),
-      type = "dir",
-    }
-
-    -- Don't add to history when navigating history
-    local old_history = state.dir_history
-    local old_index = state.history_index
-    change_root(prev_node, state)
-    state.dir_history = old_history
-    state.history_index = old_index
-
-    vim.notify("Previous directory: " .. basename_safe(path), vim.log.levels.INFO)
-  else
-    vim.notify("Already at oldest directory", vim.log.levels.WARN)
-  end
-end
-
-local function go_to_successor(state)
-  if not state.dir_history or #state.dir_history == 0 then
-    vim.notify("No next directory", vim.log.levels.WARN)
-    return
-  end
-
-  state.history_index = state.history_index or #state.dir_history + 1
-
-  if state.history_index < #state.dir_history then
-    state.history_index = state.history_index + 1
-    local path = state.dir_history[state.history_index]
-    local next_node = {
-      path = path,
-      name = basename_safe(path),
-      type = "dir",
-    }
-
-    -- Don't add to history when navigating history
-    local old_history = state.dir_history
-    local old_index = state.history_index
-    change_root(next_node, state)
-    state.dir_history = old_history
-    state.history_index = old_index
-
-    vim.notify("Next directory: " .. basename_safe(path), vim.log.levels.INFO)
-  else
-    vim.notify("Already at newest directory", vim.log.levels.WARN)
-  end
-end
-
 local function open_file_in_prev_window(state, node)
   if node.type ~= "file" then return end
   local prev = vim.fn.winnr("#")
@@ -686,8 +626,6 @@ local function attach_mappings(state)
     local count = vim.v.count > 0 and vim.v.count or nil
     goto_bookmark(state, count)
   end, "Go to bookmark.")
-  nmap("u", function() go_to_predecessor(state) end, "Go to previous directory.")
-  nmap("U", function() go_to_successor(state) end, "Go to next directory.")
 
   if state.opts.map_next_tab_keys then
     nmap("<leader>i", function()

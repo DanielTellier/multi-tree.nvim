@@ -134,8 +134,6 @@ Netrw-style file operations:
 - mB: Delete bookmark (with count: {count}mB deletes specific bookmark).
 - qb: List all bookmarks.
 - gb: Go to bookmark (with count: {count}gb goes to specific bookmark).
-- u: Go to previous directory in navigation history.
-- U: Go to next directory in navigation history.
 
 Optional “open in next tab” actions (enabled when `map_next_tab_keys = true`):
 
