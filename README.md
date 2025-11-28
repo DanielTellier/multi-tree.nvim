@@ -114,7 +114,7 @@ It’s inspired by the UX and architecture of nvim-tree.lua and neo-tree.nvim.
 ### Manual installation
 
 - Place plugin file at: ~/.config/nvim/plugin/multi-tree.lua.
-- Place module file at: ~/.config/nvim/lua/multi-tree/init.lua.
+- Place module files in: `~/.config/nvim/lua/multi-tree/`
 - Restart Neovim.
 
 ## Commands
@@ -446,7 +446,7 @@ vim.api.nvim_create_autocmd("FileType", {
 
 ## Acknowledgements
 
-- Inspired by [nvim-tree.lua](https://github.com/nvim-tree/nvim-tree.lua) and [neo-tree.nvim](https://github.com/nvim-neo-tree/neo-tree.nvim).
+- Inspired by [nvim-tree.lua](https://github.com/nvim-tree/nvim-tree.lua), [neo-tree.nvim](https://github.com/nvim-neo-tree/neo-tree.nvim), and [telescope.nvim](https://github.com/nvim-telescope/telescope.nvim)
 - Optional icons via [nvim-web-devicons](https://github.com/nvim-tree/nvim-web-devicons).
 - Optional tabline integration via [heirline.nvim](https://github.com/rebelot/heirline.nvim).
 
