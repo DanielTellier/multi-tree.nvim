@@ -94,15 +94,15 @@ It’s inspired by the UX and architecture of nvim-tree.lua and neo-tree.nvim.
     restore_local_cwd_on_close = false, -- Restore previous cwd when the tree buffer closes.
     map_next_tab_keys = true,     -- Provide default <leader> mappings for “open in next tab”.
   },
-  key = {
+  keys = {
     {
-      "<leader>et",
+      "<leader>em",
       function()
         require("multi-tree").open(vim.loop.cwd())
       end, desc = "Open MultiTree at CWD"
     },
     {
-      "<leader>eT",
+      "<leader>eM",
       function()
         require("multi-tree").open(vim.fn.expand("%:p:h"))
       end, desc = "Open MultiTree at file dir"
@@ -113,9 +113,9 @@ It’s inspired by the UX and architecture of nvim-tree.lua and neo-tree.nvim.
 
 ### Manual installation
 
-- Place plugin file at: ~/.config/nvim/plugin/multi-tree.lua.
+- Place plugin file at: `~/.config/nvim/plugin/multi-tree.lua`
 - Place module files in: `~/.config/nvim/lua/multi-tree/`
-- Restart Neovim.
+- Restart Neovim
 
 ## Commands
 
