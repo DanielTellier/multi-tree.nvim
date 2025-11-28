@@ -1,9 +1,15 @@
 # multi-tree.nvim
 
+View more than one tree in a window.
+
+## What is MultiTree
+
 MultiTree is a lightweight Neovim plugin that lets you open multiple, independent
 directory trees side-by-side within the same tab. Each tree instance is window-local,
 so changing the root or expanding nodes in one window will not affect the others.
 It’s inspired by the UX and architecture of nvim-tree.lua and neo-tree.nvim.
+
+![MultiTree Plugin Demo](docs/multi-tree-demo.gif)
 
 ## Table of Contents
 
