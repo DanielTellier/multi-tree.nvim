@@ -85,9 +85,46 @@ It’s inspired by the UX and architecture of nvim-tree.lua and neo-tree.nvim.
       end,
     },
   },
+  -- Below init replaces netrw with multi-tree.nvim
+  init = function()
+    -- Disable netrw so directories don’t open there.
+    vim.g.loaded_netrw = 1
+    vim.g.loaded_netrwPlugin = 1
+
+    -- Start with a directory: `nvim .` or `nvim path/`.
+    vim.api.nvim_create_autocmd("VimEnter", {
+      callback = function()
+        -- Conventional behavior: only hijack when there is exactly one arg and it's a dir.
+        if vim.fn.argc() == 1 then
+          local arg = vim.fn.argv(0)
+          if arg ~= nil and vim.fn.isdirectory(arg) == 1 then
+            -- Optional: set cwd to that directory for the session/tab as you prefer.
+            -- vim.cmd("cd " .. vim.fn.fnameescape(arg))
+            vim.cmd("MultiTree " .. vim.fn.fnameescape(arg)) -- loads plugin via cmd
+          end
+        end
+      end,
+      once = true,
+    })
+
+    -- Replace :edit . (or :edit <dir>) mid-session in the current window.
+    vim.api.nvim_create_autocmd("BufEnter", {
+      callback = function(ev)
+        -- Avoid loops and only act on real directory buffers.
+        if ev.file == "" then return end
+        if vim.bo[ev.buf].filetype == "multi-tree" then return end
+        if vim.fn.isdirectory(ev.file) == 1 then
+          -- Use schedule to avoid doing too much during the event itself.
+          vim.schedule(function()
+            vim.cmd("MultiTree " .. vim.fn.fnameescape(ev.file))
+          end)
+        end
+      end,
+    })
+  end,
   opts = {
-    icons = true,                 -- Set false to avoid devicons dependency.
     show_hidden = false,          -- Set true to show dotfiles.
+    icons = true,                 -- Set false to avoid devicons dependency.
     indent = 2,                   -- Indentation size for tree levels.
     auto_tab_title = true,        -- Create a per-tab title on first open in that tab.
     set_local_cwd = true,         -- Set :lcd to tree root for the tree window.
