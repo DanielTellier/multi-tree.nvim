@@ -64,6 +64,20 @@ function M.refresh(state)
   state = state or state_module.get_current()
   if not state then return end
 
+  -- Build a map of expanded paths before refresh
+  local expanded_paths = {}
+  local function collect_expanded(node)
+    if node.type == "dir" and node.expanded then
+      expanded_paths[node.path] = true
+      if node.children then
+        for _, child in ipairs(node.children) do
+          collect_expanded(child)
+        end
+      end
+    end
+  end
+  collect_expanded(state.root_node)
+
   local function refresh_node(node)
     if node.type ~= "dir" then return end
     local was_expanded = node.expanded
@@ -74,7 +88,8 @@ function M.refresh(state)
     )
     for _, c in ipairs(node.children) do
       c.depth = node.depth + 1
-      c.expanded = false
+      -- Restore expanded state from the map
+      c.expanded = expanded_paths[c.path] or false
     end
     node.expanded = was_expanded
     if node.children and node.expanded then
