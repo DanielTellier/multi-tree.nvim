@@ -136,6 +136,10 @@ end
 function M.setup(opts)
   local config = require("multi-tree.config")
   config.setup(opts)
+
+  -- Setup heirline integration if available
+  local tabs = require("multi-tree.tabs")
+  tabs.setup_heirline()
 end
 
 return M

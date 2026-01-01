@@ -39,9 +39,9 @@ It’s inspired by the UX and architecture of nvim-tree.lua and neo-tree.nvim.
 - Directory-first sorting with optional hidden files filtering.
 - Optional icons via nvim-web-devicons.
 - Simple, buffer-local keymaps for expand/collapse and opening files.
-- “Open in next tab” actions (edit/split/vsplit), with “stay in tree” variants.
+- "Open in next tab" actions (edit/split/vsplit), with "stay in tree" variants.
 - Commands to open, refresh, close trees, and rename tab titles.
-- Optional tab titles integration with Heirline.
+- Tab titles integration with Heirline.
 
 ## Installation
 
@@ -54,42 +54,7 @@ It’s inspired by the UX and architecture of nvim-tree.lua and neo-tree.nvim.
   main = "multi-tree",
   dependencies = {
     "nvim-tree/nvim-web-devicons", -- optional, for file icons
-    -- Optional: integrate tab titles using heirline.
-    {
-      "rebelot/heirline.nvim",
-      config = function()
-        local function mt_label_for_tab(tab)
-          local ok, mt = pcall(require, "multi-tree")
-          if ok and mt.tab_title then
-            return mt.tab_title(tab)
-          end
-          local win = vim.api.nvim_tabpage_get_win(tab)
-          local buf = vim.api.nvim_win_get_buf(win)
-          local name = vim.api.nvim_buf_get_name(buf)
-          return (name ~= "" and vim.fn.fnamemodify(name, ":t")) or "[No Name]"
-        end
-
-        require("heirline").setup({
-          tabline = {
-            {
-              init = function(self)
-                self.tabs = vim.api.nvim_list_tabpages()
-              end,
-              provider = function(self)
-                local s, current = "", vim.api.nvim_get_current_tabpage()
-                for _, tab in ipairs(self.tabs) do
-                  local nr = vim.api.nvim_tabpage_get_number(tab)
-                  s = s .. "%" .. nr .. "T"
-                  s = s .. (tab == current and "%#TabLineSel#" or "%#TabLine#")
-                  s = s .. " " .. mt_label_for_tab(tab) .. " "
-                end
-                return s .. "%#TabLineFill#%="
-              end,
-            },
-          },
-        })
-      end,
-    },
+    "rebelot/heirline.nvim",       -- required for tab titles
   },
   -- Below init replaces netrw with multi-tree.nvim
   init = function()
@@ -312,15 +277,14 @@ typically hidden by bufferline plugins. This is recommended for explorer sidebar
 
 ## Heirline Tab Titles
 
-MultiTree provides per-tab titles and a small API for Heirline:
+MultiTree automatically configures Heirline with per-tab titles:
 
 - The plugin tracks a title for tabs where a tree is opened for the first time,
-  like “MultiTree-1,” “MultiTree-2,” etc. This behavior is controlled by `auto_tab_title`.
-- Heirline can call `require("multi-tree").tab_title(tab)` to render these titles.
-  If no title is set, it falls back to the active buffer’s name in that tab.
-- Rename the current tab’s title with `:MultiTreeTabRename <name>.`
-
-See the lazy.nvim example above for an integrated Heirline configuration.
+  like "MultiTree-1," "MultiTree-2," etc. This behavior is controlled by `auto_tab_title`.
+- Heirline is automatically configured during `setup()` to display these titles.
+  If no title is set for a tab, it falls back to the active buffer's name in that tab.
+- Rename the current tab's title with `:MultiTreeTabRename <name>.`
+- Simply add `rebelot/heirline.nvim` as a dependency - no additional configuration needed!
 
 ## Window-local CWD
 
@@ -491,7 +455,7 @@ vim.api.nvim_create_autocmd("FileType", {
 
 - Inspired by [nvim-tree.lua](https://github.com/nvim-tree/nvim-tree.lua), [neo-tree.nvim](https://github.com/nvim-neo-tree/neo-tree.nvim), and [telescope.nvim](https://github.com/nvim-telescope/telescope.nvim)
 - Optional icons via [nvim-web-devicons](https://github.com/nvim-tree/nvim-web-devicons).
-- Optional tabline integration via [heirline.nvim](https://github.com/rebelot/heirline.nvim).
+- Tabline integration via [heirline.nvim](https://github.com/rebelot/heirline.nvim).
 
 ## Contributing
 

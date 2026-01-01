@@ -152,12 +152,10 @@ Recent commits removed:
 
 Focus has shifted toward simplification and core features only.
 
-## Optional Dependencies
+## Dependencies
 
-- `nvim-web-devicons` - For file icons (`icons` config option)
-- `heirline.nvim` - For tab title integration (`tab_title()` API function)
-
-Both are gracefully optional - the plugin works without them.
+- `heirline.nvim` - Required for tab title integration. Automatically configured during `setup()`.
+- `nvim-web-devicons` - Optional, for file icons (`icons` config option). Gracefully degrades if not available.
 
 ## Common Modification Points
 

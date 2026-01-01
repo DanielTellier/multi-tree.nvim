@@ -3,6 +3,45 @@ local M = {}
 M.tab_titles = M.tab_titles or {}
 M._tab_counter = M._tab_counter or 0
 
+function M.setup_heirline()
+  local ok, heirline = pcall(require, "heirline")
+  if not ok then
+    return
+  end
+
+  -- Heirline tabline that uses MultiTree's per-tab titles when available.
+  local function mt_label_for_tab(tab)
+    local title = M.tab_titles[tab]
+    if title then return title end
+
+    -- Fallback when no multi-tree title is set.
+    local win = vim.api.nvim_tabpage_get_win(tab)
+    local buf = vim.api.nvim_win_get_buf(win)
+    local name = vim.api.nvim_buf_get_name(buf)
+    return (name ~= "" and vim.fn.fnamemodify(name, ":t")) or "[No Name]"
+  end
+
+  heirline.setup({
+    tabline = {
+      {
+        init = function(self)
+          self.tabs = vim.api.nvim_list_tabpages()
+        end,
+        provider = function(self)
+          local s, current = "", vim.api.nvim_get_current_tabpage()
+          for _, tab in ipairs(self.tabs) do
+            local nr = vim.api.nvim_tabpage_get_number(tab)
+            s = s .. "%" .. nr .. "T"
+            s = s .. (tab == current and "%#TabLineSel#" or "%#TabLine#")
+            s = s .. " " .. mt_label_for_tab(tab) .. " "
+          end
+          return s .. "%#TabLineFill#%="
+        end,
+      },
+    },
+  })
+end
+
 function M.get_title(tab)
   local title = M.tab_titles[tab]
   if title then return title end
