@@ -145,11 +145,11 @@ function M.setup(opts)
           local arg = vim.fn.argv(0)
           if arg ~= nil and vim.fn.isdirectory(arg) == 1 then
             local buf_to_delete = vim.fn.bufnr(arg)
-            require("multi-tree").open(vim.fn.fnameescape(arg))
-            -- Clean up the directory buffer after opening multi-tree
-            if vim.api.nvim_buf_is_valid(buf_to_delete) then
-              vim.api.nvim_buf_delete(buf_to_delete, { force = true })
-            end
+            require("multi-tree").open(vim.fn.fnameescape(arg), {})
+            -- -- Clean up the directory buffer after opening multi-tree
+            -- if vim.api.nvim_buf_is_valid(buf_to_delete) then
+            --   vim.api.nvim_buf_delete(buf_to_delete, { force = true })
+            -- end
           end
         end
       end,
@@ -166,11 +166,11 @@ function M.setup(opts)
           local buf_to_delete = ev.buf
           -- Use schedule to avoid doing too much during the event itself.
           vim.schedule(function()
-            require("multi-tree").open(vim.fn.fnameescape(ev.file))
-            -- Clean up the directory buffer after opening multi-tree
-            if vim.api.nvim_buf_is_valid(buf_to_delete) then
-              vim.api.nvim_buf_delete(buf_to_delete, { force = true })
-            end
+            require("multi-tree").open(vim.fn.fnameescape(ev.file), {})
+            -- -- Clean up the directory buffer after opening multi-tree
+            -- if vim.api.nvim_buf_is_valid(buf_to_delete) then
+            --   vim.api.nvim_buf_delete(buf_to_delete, { force = true })
+            -- end
           end)
         end
       end,
