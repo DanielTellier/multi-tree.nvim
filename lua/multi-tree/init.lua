@@ -117,10 +117,47 @@ function M.setup(opts)
   config.setup(opts)
   local conf_opts = config.get()
 
-  if not conf_opts.disable_netrw then
-    -- If user explicitly wants netrw enabled, restore it
-    vim.g.loaded_netrw = nil
-    vim.g.loaded_netrwPlugin = nil
+  if conf_opts.disable_netrw then
+    --[[
+      This needs to be defined in your Lazy config
+      ```
+      {
+        "DanielTellier/multi-tree.nvim",
+        dependencies = { "nvim-tree/nvim-web-devicons" },
+        init = function()
+          -- Disable netrw to allow directory hijacking
+          -- Must be done before plugin loads
+          vim.g.loaded_netrw = 1
+          vim.g.loaded_netrwPlugin = 1
+        end,
+        opts = {
+          disable_netrw = true,
+      ...
+      }
+      ```
+    --]]
+    -- Open MultiTree via:
+    -- `nvim <.|dir>`
+    -- `:edit <.|dir>`
+    vim.api.nvim_create_autocmd("BufEnter", {
+      group = vim.api.nvim_create_augroup("MultiTreeDirHijack", { clear = true }),
+      callback = function(ev)
+        -- Avoid loops and only act on real directory buffers.
+        if ev.file == "" then return end
+        if vim.bo[ev.buf].filetype == "multi-tree" then return end
+        if vim.fn.isdirectory(ev.file) == 1 then
+          local buf_to_delete = ev.buf
+          -- Use schedule to avoid doing too much during the event itself.
+          vim.schedule(function()
+            require("multi-tree").open(vim.fn.fnameescape(ev.file))
+            -- Clean up the directory buffer after opening multi-tree
+            if vim.api.nvim_buf_is_valid(buf_to_delete) then
+              vim.api.nvim_buf_delete(buf_to_delete, { force = true })
+            end
+          end)
+        end
+      end,
+    })
   end
 end
 
