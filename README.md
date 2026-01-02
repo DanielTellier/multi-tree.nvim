@@ -1,6 +1,6 @@
 # multi-tree.nvim
 
-View more than one tree in a window.
+View more than one tree in a tab.
 
 ## What is MultiTree
 
