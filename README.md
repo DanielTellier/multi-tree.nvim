@@ -22,7 +22,6 @@ It’s inspired by the UX and architecture of nvim-tree.lua and neo-tree.nvim.
 - [Default Configuration](#default-configuration)
 - [Replacing netrw](#replacing-netrw)
 - [Configuration](#configuration)
-- [Heirline Tab Titles](#heirline-tab-titles)
 - [Window-local CWD](#window-local-cwd)
 - [Sessions](#sessions)
 - [Custom mappings](#custom-mappings)
@@ -41,7 +40,6 @@ It’s inspired by the UX and architecture of nvim-tree.lua and neo-tree.nvim.
 - Simple, buffer-local keymaps for expand/collapse and opening files.
 - "Open in next tab" actions (edit/split/vsplit), with "stay in tree" variants.
 - Commands to open, refresh, close trees, and rename tab titles.
-- Tab titles integration with Heirline.
 
 ## Installation
 
@@ -54,7 +52,6 @@ It’s inspired by the UX and architecture of nvim-tree.lua and neo-tree.nvim.
   main = "multi-tree",
   dependencies = {
     "nvim-tree/nvim-web-devicons", -- optional, for file icons
-    "rebelot/heirline.nvim",       -- required for tab titles
   },
   -- Below init replaces netrw with multi-tree.nvim
   init = function()
@@ -97,7 +94,6 @@ It’s inspired by the UX and architecture of nvim-tree.lua and neo-tree.nvim.
     show_hidden = false,          -- Set true to show dotfiles.
     icons = true,                 -- Set false to avoid devicons dependency.
     indent = 2,                   -- Indentation size for tree levels.
-    auto_tab_title = true,        -- Create a per-tab title on first open in that tab.
     set_local_cwd = true,         -- Set :lcd to tree root for the tree window.
     restore_local_cwd_on_close = false, -- Restore previous cwd when the tree buffer closes.
     map_next_tab_keys = true,     -- Provide default <leader> mappings for “open in next tab”.
@@ -130,7 +126,6 @@ It’s inspired by the UX and architecture of nvim-tree.lua and neo-tree.nvim.
 - `:MultiTree [path].` Open a tree in the current window. Defaults to the current working directory if no path is given.
 - `:MultiTreeRefresh.` Rescan the current tree and refresh its contents.
 - `:MultiTreeClose.` Close the current tree buffer.
-- `:MultiTreeTabRename <name>.` Rename the current tab’s title (for Heirline or custom tabline integrations).
 
 ## Keymaps
 
@@ -176,7 +171,6 @@ Here are all the available options and their default values:
   icons = true,                 -- Enable icons via nvim-web-devicons if available
   show_hidden = false,          -- Show dotfiles and hidden files when true
   indent = 2,                   -- Indentation size for tree levels (spaces)
-  auto_tab_title = true,        -- Create automatic per-tab titles like "MultiTree-1"
   set_local_cwd = true,         -- Set window-local working directory (:lcd) to tree root
   restore_local_cwd_on_close = false, -- Restore previous cwd when closing tree buffer
   map_next_tab_keys = true,     -- Provide default <leader> mappings for "open in next tab"
@@ -250,7 +244,6 @@ require("multi-tree").setup({
   icons = true,                 -- Enable icons via nvim-web-devicons if available.
   show_hidden = false,          -- Show dotfiles when true.
   indent = 2,                   -- Indentation size for tree levels.
-  auto_tab_title = true,        -- Per-tab title like “MultiTree-1”; used by Heirline integration.
   set_local_cwd = true,         -- Set :lcd to the tree’s root for the tree window.
   restore_local_cwd_on_close = false, -- Restore previous cwd when closing the tree buffer.
   map_next_tab_keys = true,     -- Provide default <leader>{i,I,o,O,v,V} mappings.
@@ -274,17 +267,6 @@ vim.api.nvim_create_autocmd("FileType", {
 Optional: control whether the tree buffer is “listed” in Neovim’s buffer list.
 Unlisted buffers won’t appear in `:ls`, won’t be cycled by `:bnext/:bprev`, and are
 typically hidden by bufferline plugins. This is recommended for explorer sidebars.
-
-## Heirline Tab Titles
-
-MultiTree automatically configures Heirline with per-tab titles:
-
-- The plugin tracks a title for tabs where a tree is opened for the first time,
-  like "MultiTree-1," "MultiTree-2," etc. This behavior is controlled by `auto_tab_title`.
-- Heirline is automatically configured during `setup()` to display these titles.
-  If no title is set for a tab, it falls back to the active buffer's name in that tab.
-- Rename the current tab's title with `:MultiTreeTabRename <name>.`
-- Simply add `rebelot/heirline.nvim` as a dependency - no additional configuration needed!
 
 ## Window-local CWD
 
@@ -445,9 +427,6 @@ vim.api.nvim_create_autocmd("FileType", {
 - Root name missing with trailing slash (for example, `:MultiTree lua/`). Paths are
   normalized to strip trailing separators, and the root label is derived safely;
   update to the latest version if this ever occurs.
-- Tabline conflicts. Only one thing should set `vim.o.tabline`. If you use a tabline
-  plugin such as Heirline, do not let MultiTree set `vim.o.tabline`; integrate titles
-  through the plugin’s config.
 - PWD not applied. Ensure `set_local_cwd = true`. For “open in next tab,” MultiTree
   sets the local cwd in the destination tab’s window before opening.
 
@@ -455,7 +434,6 @@ vim.api.nvim_create_autocmd("FileType", {
 
 - Inspired by [nvim-tree.lua](https://github.com/nvim-tree/nvim-tree.lua), [neo-tree.nvim](https://github.com/nvim-neo-tree/neo-tree.nvim), and [telescope.nvim](https://github.com/nvim-telescope/telescope.nvim)
 - Optional icons via [nvim-web-devicons](https://github.com/nvim-tree/nvim-web-devicons).
-- Tabline integration via [heirline.nvim](https://github.com/rebelot/heirline.nvim).
 
 ## Contributing
 

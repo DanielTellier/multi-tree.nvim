@@ -24,7 +24,6 @@ function M.open(path, opts)
   local state_module = require("multi-tree.state")
   local utils = require("multi-tree.utils")
   local fs = require("multi-tree.fs")
-  local tabs = require("multi-tree.tabs")
   local mappings = require("multi-tree.mappings")
   local render = require("multi-tree.render")
 
@@ -48,11 +47,6 @@ function M.open(path, opts)
 
   local buf = create_buffer(win, buf_title)
   local state = state_module.create(win, buf, merged_opts)
-
-  -- Create a per-tab title unless explicitly disabled.
-  if state.opts.auto_tab_title ~= false then
-    tabs.ensure_title()
-  end
 
   if state.opts.set_local_cwd then
     vim.cmd("lcd " .. vim.fn.fnameescape(abs))
@@ -118,28 +112,9 @@ function M.close_current()
   if state then M.close(state) end
 end
 
-function M.tab_title(tab)
-  local tabs = require("multi-tree.tabs")
-  return tabs.get_title(tab)
-end
-
-function M.tab_rename(new_name)
-  local tabs = require("multi-tree.tabs")
-  tabs.rename(new_name)
-end
-
-function M.on_tab_closed(tabnr)
-  local tabs = require("multi-tree.tabs")
-  tabs.on_closed(tabnr)
-end
-
 function M.setup(opts)
   local config = require("multi-tree.config")
   config.setup(opts)
-
-  -- Setup heirline integration if available
-  local tabs = require("multi-tree.tabs")
-  tabs.setup_heirline()
 end
 
 return M

@@ -4,7 +4,6 @@ M.defaults = {
   show_hidden = false,
   icons = true,
   indent = 2,
-  auto_tab_title = true,
   map_next_tab_keys = true,
   set_local_cwd = true,
   restore_local_cwd_on_close = false,

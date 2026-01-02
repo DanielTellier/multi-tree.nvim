@@ -15,15 +15,3 @@ end, {})
 vim.api.nvim_create_user_command("MultiTreeClose", function()
   require("multi-tree").close_current()
 end, {})
-
-vim.api.nvim_create_user_command("MultiTreeTabRename", function(opts)
-  require("multi-tree").tab_rename(opts.args)
-end, { nargs = 1 })
-
--- Clean up titles when tabs close.
-vim.api.nvim_create_autocmd("TabClosed", {
-  callback = function(ev)
-    local nr = tonumber(ev.match)
-    pcall(function() require("multi-tree").on_tab_closed(nr) end)
-  end,
-})
