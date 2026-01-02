@@ -136,9 +136,27 @@ function M.setup(opts)
       }
       ```
     --]]
-    -- Open MultiTree via:
-    -- `nvim <.|dir>`
-    -- `:edit <.|dir>`
+
+    -- Open MultiTree via: `nvim <.|dir>`
+    vim.api.nvim_create_autocmd("VimEnter", {
+      callback = function()
+        -- Conventional behavior: only hijack when there is exactly one arg and it's a dir.
+        if vim.fn.argc() == 1 then
+          local arg = vim.fn.argv(0)
+          if arg ~= nil and vim.fn.isdirectory(arg) == 1 then
+            local buf_to_delete = vim.fn.bufnr(arg)
+            require("multi-tree").open(vim.fn.fnameescape(arg))
+            -- Clean up the directory buffer after opening multi-tree
+            if vim.api.nvim_buf_is_valid(buf_to_delete) then
+              vim.api.nvim_buf_delete(buf_to_delete, { force = true })
+            end
+          end
+        end
+      end,
+      once = true,
+    })
+
+    -- Open MultiTree via: `:edit <.|dir>`
     vim.api.nvim_create_autocmd("BufEnter", {
       group = vim.api.nvim_create_augroup("MultiTreeDirHijack", { clear = true }),
       callback = function(ev)
@@ -151,9 +169,9 @@ function M.setup(opts)
           vim.schedule(function()
             require("multi-tree").open(vim.fn.fnameescape(ev.file))
             -- Clean up the directory buffer after opening multi-tree
-            -- if vim.api.nvim_buf_is_valid(buf_to_delete) then
-            --   vim.api.nvim_buf_delete(buf_to_delete, { force = true })
-            -- end
+            if vim.api.nvim_buf_is_valid(buf_to_delete) then
+              vim.api.nvim_buf_delete(buf_to_delete, { force = true })
+            end
           end)
         end
       end,
