@@ -30,7 +30,7 @@ function M.open(path, opts)
   local win = vim.api.nvim_get_current_win()
   local abs = utils.normalize_path(path)
   local root_name = utils.basename_safe(abs)
-  local buf_title = "MultiTree: " .. root_name
+  local buf_title = root_name
 
   local merged_opts = vim.tbl_deep_extend(
     "force",
