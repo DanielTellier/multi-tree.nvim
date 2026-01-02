@@ -19,7 +19,7 @@ local function create_buffer(win, title)
   return buf
 end
 
-function M.open(path, buf, opts)
+function M.open(path, opts)
   local config = require("multi-tree.config")
   local state_module = require("multi-tree.state")
   local utils = require("multi-tree.utils")
@@ -45,8 +45,8 @@ function M.open(path, buf, opts)
     return
   end
 
-  local temp_buf = buf or create_buffer(win, buf_title)
-  local state = state_module.create(win, temp_buf, merged_opts)
+  local buf = create_buffer(win, buf_title)
+  local state = state_module.create(win, buf, merged_opts)
 
   if state.opts.set_local_cwd then
     vim.cmd("lcd " .. vim.fn.fnameescape(abs))
