@@ -151,9 +151,9 @@ function M.setup(opts)
           vim.schedule(function()
             require("multi-tree").open(vim.fn.fnameescape(ev.file))
             -- Clean up the directory buffer after opening multi-tree
-            if vim.api.nvim_buf_is_valid(buf_to_delete) then
-              vim.api.nvim_buf_delete(buf_to_delete, { force = true })
-            end
+            -- if vim.api.nvim_buf_is_valid(buf_to_delete) then
+            --   vim.api.nvim_buf_delete(buf_to_delete, { force = true })
+            -- end
           end)
         end
       end,
