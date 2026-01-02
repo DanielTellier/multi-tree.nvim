@@ -32,17 +32,17 @@ vim.api.nvim_create_autocmd("VimEnter", {
   once = true,
 })
 
--- Replace :edit . (or :edit <dir>) mid-session in the current window.
-vim.api.nvim_create_autocmd("BufEnter", {
-  callback = function(ev)
-    -- Avoid loops and only act on real directory buffers.
-    if ev.file == "" then return end
-    if vim.bo[ev.buf].filetype == "multi-tree" then return end
-    if vim.fn.isdirectory(ev.file) == 1 then
-      -- Use schedule to avoid doing too much during the event itself.
-      vim.schedule(function()
-        require("multi-tree").open(vim.fn.fnameescape(ev.file))
-      end)
-    end
-  end,
-})
+-- -- Replace :edit . (or :edit <dir>) mid-session in the current window.
+-- vim.api.nvim_create_autocmd("BufEnter", {
+--   callback = function(ev)
+--     -- Avoid loops and only act on real directory buffers.
+--     if ev.file == "" then return end
+--     if vim.bo[ev.buf].filetype == "multi-tree" then return end
+--     if vim.fn.isdirectory(ev.file) == 1 then
+--       -- Use schedule to avoid doing too much during the event itself.
+--       vim.schedule(function()
+--         require("multi-tree").open(vim.fn.fnameescape(ev.file))
+--       end)
+--     end
+--   end,
+-- })
