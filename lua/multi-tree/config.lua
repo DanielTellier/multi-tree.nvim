@@ -7,6 +7,7 @@ M.defaults = {
   map_next_tab_keys = true,
   set_local_cwd = true,
   restore_local_cwd_on_close = false,
+  disable_netrw = true,
 }
 
 M.values = vim.deepcopy(M.defaults)
