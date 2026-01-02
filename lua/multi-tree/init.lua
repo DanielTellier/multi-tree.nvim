@@ -158,7 +158,6 @@ function M.setup(opts)
 
     -- Open MultiTree via: `:edit <.|dir>`
     vim.api.nvim_create_autocmd("BufEnter", {
-      group = vim.api.nvim_create_augroup("MultiTreeDirHijack", { clear = true }),
       callback = function(ev)
         -- Avoid loops and only act on real directory buffers.
         if ev.file == "" then return end
