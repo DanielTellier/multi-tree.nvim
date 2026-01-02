@@ -116,10 +116,11 @@ function M.setup(opts)
   local config = require("multi-tree.config")
   config.setup(opts)
   local conf_opts = config.get()
-  if conf_opts.disable_netrw then
-    -- Disable netrw so directories don’t open there.
-    vim.g.loaded_netrw = 1
-    vim.g.loaded_netrwPlugin = 1
+
+  if not conf_opts.disable_netrw then
+    -- If user explicitly wants netrw enabled, restore it
+    vim.g.loaded_netrw = nil
+    vim.g.loaded_netrwPlugin = nil
   end
 end
 
