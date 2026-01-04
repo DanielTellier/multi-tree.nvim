@@ -48,12 +48,23 @@ It’s inspired by the UX and architecture of nvim-tree.lua and neo-tree.nvim.
 ```lua
 {
   "DanielTellier/multi-tree.nvim",
-  event = "VeryLazy", -- or lazy = false if you want it at startup
-  main = "multi-tree",
+  event = "VeryLazy",
   init = function()
     -- Disable netrw so directories don’t open there.
     vim.g.loaded_netrw = 1
     vim.g.loaded_netrwPlugin = 1
+
+    local function open_mt(file, buf)
+      if not file then return end
+      if vim.bo[buf].filetype == "multi-tree" then return end
+      if vim.fn.isdirectory(file) == 1 then
+        require("multi-tree").open(vim.fn.fnameescape(file))
+        -- Clean up the original buffer.
+        if vim.api.nvim_buf_is_valid(buf) then
+          vim.api.nvim_buf_delete(buf, { force = true })
+        end
+      end
+    end
 
     -- Start with a directory: `nvim .` or `nvim path/`.
     vim.api.nvim_create_autocmd("VimEnter", {
@@ -61,14 +72,9 @@ It’s inspired by the UX and architecture of nvim-tree.lua and neo-tree.nvim.
         -- Conventional behavior: only hijack when there is exactly one arg and it's a dir.
         if vim.fn.argc() == 1 then
           local arg = vim.fn.argv(0)
-          if arg ~= nil and vim.fn.isdirectory(arg) == 1 then
-            local buf_to_delete = vim.fn.bufnr(arg)
-            require("multi-tree").open(vim.fn.fnameescape(arg), {})
-            -- Clean up the directory buffer after opening multi-tree
-            if vim.api.nvim_buf_is_valid(buf_to_delete) then
-              vim.api.nvim_buf_delete(buf_to_delete, { force = true })
-            end
-          end
+          if not arg then return end
+          local buf = vim.fn.bufnr(arg)
+          open_mt(arg, buf)
         end
       end,
       once = true,
@@ -77,20 +83,7 @@ It’s inspired by the UX and architecture of nvim-tree.lua and neo-tree.nvim.
     -- Replace :edit . (or :edit <dir>) mid-session in the current window.
     vim.api.nvim_create_autocmd("BufEnter", {
       callback = function(ev)
-        -- Avoid loops and only act on real directory buffers.
-        if ev.file == "" then return end
-        if vim.bo[ev.buf].filetype == "multi-tree" then return end
-        if vim.fn.isdirectory(ev.file) == 1 then
-          local buf_to_delete = ev.buf
-          -- Use schedule to avoid doing too much during the event itself.
-          vim.schedule(function()
-            require("multi-tree").open(vim.fn.fnameescape(ev.file), {})
-            -- Clean up the directory buffer after opening multi-tree
-            if vim.api.nvim_buf_is_valid(buf_to_delete) then
-              vim.api.nvim_buf_delete(buf_to_delete, { force = true })
-            end
-          end)
-        end
+        open_mt(ev.file, ev.buf)
       end,
     })
 
@@ -103,10 +96,7 @@ It’s inspired by the UX and architecture of nvim-tree.lua and neo-tree.nvim.
         end
       end,
     })
-  end
-  dependencies = {
-    "nvim-tree/nvim-web-devicons", -- optional, for file icons
-  },
+  end,
   keys = {
     {
       "<leader>em",
@@ -121,7 +111,10 @@ It’s inspired by the UX and architecture of nvim-tree.lua and neo-tree.nvim.
       end, desc = "Open MultiTree at file dir"
     },
   },
-}
+  dependencies = {
+    "nvim-tree/nvim-web-devicons",
+  },
+},
 ```
 
 ### Manual installation
@@ -197,12 +190,22 @@ MultiTree can completely replace netrw as your default directory browser. This s
 {
   "DanielTellier/multi-tree.nvim",
   event = "VeryLazy",
-  cmd = { "MultiTree" }, -- calling :MultiTree auto-loads the plugin
-  main = "multi-tree",
   init = function()
     -- Disable netrw so directories don’t open there.
     vim.g.loaded_netrw = 1
     vim.g.loaded_netrwPlugin = 1
+
+    local function open_mt(file, buf)
+      if not file then return end
+      if vim.bo[buf].filetype == "multi-tree" then return end
+      if vim.fn.isdirectory(file) == 1 then
+        require("multi-tree").open(vim.fn.fnameescape(file))
+        -- Clean up the original buffer.
+        if vim.api.nvim_buf_is_valid(buf) then
+          vim.api.nvim_buf_delete(buf, { force = true })
+        end
+      end
+    end
 
     -- Start with a directory: `nvim .` or `nvim path/`.
     vim.api.nvim_create_autocmd("VimEnter", {
@@ -210,14 +213,9 @@ MultiTree can completely replace netrw as your default directory browser. This s
         -- Conventional behavior: only hijack when there is exactly one arg and it's a dir.
         if vim.fn.argc() == 1 then
           local arg = vim.fn.argv(0)
-          if arg ~= nil and vim.fn.isdirectory(arg) == 1 then
-            local buf_to_delete = vim.fn.bufnr(arg)
-            require("multi-tree").open(vim.fn.fnameescape(arg), {})
-            -- Clean up the directory buffer after opening multi-tree
-            if vim.api.nvim_buf_is_valid(buf_to_delete) then
-              vim.api.nvim_buf_delete(buf_to_delete, { force = true })
-            end
-          end
+          if not arg then return end
+          local buf = vim.fn.bufnr(arg)
+          open_mt(arg, buf)
         end
       end,
       once = true,
@@ -226,26 +224,11 @@ MultiTree can completely replace netrw as your default directory browser. This s
     -- Replace :edit . (or :edit <dir>) mid-session in the current window.
     vim.api.nvim_create_autocmd("BufEnter", {
       callback = function(ev)
-        -- Avoid loops and only act on real directory buffers.
-        if ev.file == "" then return end
-        if vim.bo[ev.buf].filetype == "multi-tree" then return end
-        if vim.fn.isdirectory(ev.file) == 1 then
-          local buf_to_delete = ev.buf
-          -- Use schedule to avoid doing too much during the event itself.
-          vim.schedule(function()
-            require("multi-tree").open(vim.fn.fnameescape(ev.file), {})
-            -- Clean up the directory buffer after opening multi-tree
-            if vim.api.nvim_buf_is_valid(buf_to_delete) then
-              vim.api.nvim_buf_delete(buf_to_delete, { force = true })
-            end
-          end)
-        end
+        open_mt(ev.file, ev.buf)
       end,
     })
+    -- Rest of setup here
   end,
-  opts = {
-    -- your configuration options here
-  },
 }
 ```
 
