@@ -86,16 +86,6 @@ It’s inspired by the UX and architecture of nvim-tree.lua and neo-tree.nvim.
         open_mt(ev.file, ev.buf)
       end,
     })
-
-    vim.api.nvim_create_autocmd("FileType", {
-      pattern = "multi-tree",
-      callback = function(ev)
-        local ok, wk = pcall(require, "which-key")
-        if ok then
-          wk.add({ { "<leader>", group = "multi-tree", mode = "n", buffer = ev.buf } })
-        end
-      end,
-    })
   end,
   keys = {
     {
@@ -397,20 +387,6 @@ vim.api.nvim_create_autocmd("FileType", {
 })
 ```
 
-Optional which-key group for this buffer:
-
-```lua
-vim.api.nvim_create_autocmd("FileType", {
-  pattern = "multi-tree",
-  callback = function(ev)
-    local ok, wk = pcall(require, "which-key")
-    if ok then
-      wk.add({ { "<leader>", group = "multi-tree", mode = "n", buffer = ev.buf } })
-    end
-  end,
-})
-```
-
 ## Tips
 
 - Open files from a tree in another window: focus the target window once
@@ -424,9 +400,6 @@ vim.api.nvim_create_autocmd("FileType", {
 
 - “W10: Warning: Changing a readonly file.” MultiTree sets tree buffers modifiable
   only during rendering. Ensure the tree buffer is not set to `readonly = true`.
-- Root name missing with trailing slash (for example, `:MultiTree lua/`). Paths are
-  normalized to strip trailing separators, and the root label is derived safely;
-  update to the latest version if this ever occurs.
 - PWD not applied. Ensure `set_local_cwd = true`. For “open in next tab,” MultiTree
   sets the local cwd in the destination tab’s window before opening.
 
