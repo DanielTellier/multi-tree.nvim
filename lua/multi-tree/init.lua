@@ -19,11 +19,7 @@ local function create_buffer(win, title)
   return buf
 end
 
-function M.open(open_type, path)
-  open_type = open_type or "vnew"
-  if open_type ~= "enew" and open_type ~= "new" and open_type ~= "vnew" then
-    error("Invalid open type: '" .. open_type .. "' must be enew, new, or vnew")
-  end
+function M.open(path, open_type)
   local config = require("multi-tree.config")
   local opts = config.get() or {}
   local state_module = require("multi-tree.state")
@@ -43,7 +39,9 @@ function M.open(open_type, path)
     return
   end
 
-  vim.cmd(open_type)
+  if open_type then
+    vim.cmd(open_type)
+  end
   local win = vim.api.nvim_get_current_win()
   local buf = create_buffer(win, buf_title)
   local state = state_module.create(win, buf, opts)

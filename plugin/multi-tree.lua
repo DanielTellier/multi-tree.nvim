@@ -4,11 +4,10 @@ end
 vim.g.loaded_multi_tree = true
 
 vim.api.nvim_create_user_command("MultiTree", function(opts)
-  local args = vim.split(opts.args, "%s+")
-  local open_type = args[1] or "vnew"
-  local path = args[2] or vim.loop.cwd()
-  require("multi-tree").open(open_type, path)
-end, { nargs = "*", complete = "dir" })
+  local open_type = opts.fargs[1]
+  local path = opts.fargs[2]
+  require("multi-tree").open(path, open_type)
+end, { nargs = 2, complete = "dir" })
 
 vim.api.nvim_create_user_command("MultiTreeRefresh", function()
   require("multi-tree").refresh_current()
