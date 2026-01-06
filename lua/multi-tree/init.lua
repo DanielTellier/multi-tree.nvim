@@ -4,9 +4,9 @@ M.bookmarks = M.bookmarks or {}
 
 local function create_buffer(win, title)
   local buf = vim.api.nvim_create_buf(false, true)
-  if title and title ~= "" then
-    vim.api.nvim_buf_set_name(buf, title)
-  end
+  -- if title and title ~= "" then
+  --   vim.api.nvim_buf_set_name(buf, title)
+  -- end
 
   vim.api.nvim_win_set_buf(win, buf)
   vim.bo[buf].buftype = "nofile"
@@ -31,7 +31,7 @@ function M.open(path)
   local abs = utils.normalize_path(path)
   if vim.fn.isdirectory(abs) == 0 then return end
   local root_name = utils.basename_safe(abs)
-  local buf_title = root_name
+  local buf_title = "MT: " .. root_name
 
   -- Enforce uniqueness: focus existing tree for this path if
   -- present.
