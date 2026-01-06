@@ -29,6 +29,7 @@ function M.open(path, open_type)
   local render = require("multi-tree.render")
 
   local abs = utils.normalize_path(path)
+  if vim.fn.isdirectory(abs) == 0 then return end
   local root_name = utils.basename_safe(abs)
   local buf_title = root_name
 
