@@ -19,24 +19,22 @@ local function create_buffer(win, title)
   return buf
 end
 
-function M.open(path, opts)
+function M.open(open_type, path)
+  open_type = open_type or "vnew"
+  if open_type ~= "enew" and open_type ~= "new" and open_type ~= "vnew" then
+    error("Invalid open type: '" .. open_type .. "' must be enew, new, or vnew")
+  end
   local config = require("multi-tree.config")
+  local opts = config.get() or {}
   local state_module = require("multi-tree.state")
   local utils = require("multi-tree.utils")
   local fs = require("multi-tree.fs")
   local mappings = require("multi-tree.mappings")
   local render = require("multi-tree.render")
 
-  local win = vim.api.nvim_get_current_win()
   local abs = utils.normalize_path(path)
   local root_name = utils.basename_safe(abs)
   local buf_title = root_name
-
-  local merged_opts = vim.tbl_deep_extend(
-    "force",
-    config.get(),
-    opts or {}
-  )
 
   -- Enforce uniqueness: focus existing tree for this path if
   -- present.
@@ -45,8 +43,10 @@ function M.open(path, opts)
     return
   end
 
+  vim.cmd(open_type)
+  local win = vim.api.nvim_get_current_win()
   local buf = create_buffer(win, buf_title)
-  local state = state_module.create(win, buf, merged_opts)
+  local state = state_module.create(win, buf, opts)
 
   if state.opts.set_local_cwd then
     vim.cmd("lcd " .. vim.fn.fnameescape(abs))
