@@ -19,7 +19,7 @@ local function create_buffer(win, title)
   return buf
 end
 
-function M.open(path, open_type)
+function M.open(path)
   local config = require("multi-tree.config")
   local opts = config.get() or {}
   local state_module = require("multi-tree.state")
@@ -40,9 +40,6 @@ function M.open(path, open_type)
     return
   end
 
-  if open_type then
-    vim.cmd(open_type)
-  end
   local win = vim.api.nvim_get_current_win()
   local buf = create_buffer(win, buf_title)
   local state = state_module.create(win, buf, opts)
