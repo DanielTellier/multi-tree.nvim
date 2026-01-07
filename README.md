@@ -22,9 +22,7 @@ It’s inspired by the UX and architecture of nvim-tree.lua and neo-tree.nvim.
 - [Default Configuration](#default-configuration)
 - [Configuration](#configuration)
 - [Window-local CWD](#window-local-cwd)
-- [Sessions](#sessions)
 - [Custom mappings](#custom-mappings)
-- [Tips](#tips)
 - [Troubleshooting](#troubleshooting)
 - [Acknowledgements](#acknowledgements)
 - [Contributing](#contributing)
@@ -47,7 +45,6 @@ It’s inspired by the UX and architecture of nvim-tree.lua and neo-tree.nvim.
 ```lua
 {
   "DanielTellier/multi-tree.nvim",
-  event = "VeryLazy",
   dependencies = {
     "nvim-tree/nvim-web-devicons",
   },
@@ -145,10 +142,6 @@ vim.api.nvim_create_autocmd("FileType", {
 })
 ```
 
-Optional: control whether the tree buffer is “listed” in Neovim’s buffer list.
-Unlisted buffers won’t appear in `:ls`, won’t be cycled by `:bnext/:bprev`, and are
-typically hidden by bufferline plugins. This is recommended for explorer sidebars.
-
 ## Window-local CWD
 
 By default, MultiTree sets a window-local working directory (`:lcd`) equal to the
@@ -161,79 +154,6 @@ tree’s root for the tree window:
 - To restore the previous cwd when the tree buffer closes, set `restore_local_cwd_on_close = true`.
 
 If you prefer per-tab rather than per-window cwd, use `:tcd` in your own fork or local patch.
-
-## Sessions
-
-Neovim sessions don’t reliably restore scratch/plugin windows. To make MultiTree
-“just work” with sessions, record which tree roots are open when saving and reopen
-them after the session loads.
-
-- Add globals to your session file:
-  - `vim.opt.sessionoptions:append("globals")`.
-
-Save open MultiTree roots on exit:
-
-```lua
-vim.opt.sessionoptions:append("globals")
-
-vim.api.nvim_create_autocmd("VimLeavePre", {
-  callback = function()
-    local ok, mt = pcall(require, "multi-tree")
-    if not ok or not mt.states then return end
-    local roots_by_tab = {}
-    for _, st in pairs(mt.states) do
-      if st.root_node and st.root_node.path and vim.api.nvim_win_is_valid(st.win) then
-        local tab = vim.api.nvim_win_get_tabpage(st.win)
-        local tnr = vim.api.nvim_tabpage_get_number(tab)
-        roots_by_tab[tnr] = roots_by_tab[tnr] or {}
-        table.insert(roots_by_tab[tnr], st.root_node.path)
-      end
-    end
-    vim.g.multi_tree_session = roots_by_tab
-  end,
-})
-```
-
-Reopen trees after the session loads:
-
-```lua
-vim.api.nvim_create_autocmd("SessionLoadPost", {
-  callback = function()
-    local ok, mt = pcall(require, "multi-tree")
-    if not ok then return end
-    local roots = vim.g.multi_tree_session
-    if type(roots) ~= "table" then return end
-
-    local tab_numbers = {}
-    for tnr, _ in pairs(roots) do table.insert(tab_numbers, tnr) end
-    table.sort(tab_numbers)
-
-    local existing_tabs = vim.api.nvim_list_tabpages()
-    local max_tab = #existing_tabs
-
-    for _, tnr in ipairs(tab_numbers) do
-      if tnr > max_tab then
-        vim.cmd("tabnew")
-        max_tab = max_tab + 1
-      else
-        vim.cmd(("%dtabnext"):format(tnr))
-      end
-      for i, path in ipairs(roots[tnr]) do
-        if i > 1 then vim.cmd("vert vsplit") end
-        mt.open(path) -- If already open, MultiTree focuses it due to uniqueness.
-      end
-    end
-  end,
-})
-```
-
-Notes:
-- If you use a session manager (for example, persistence.nvim, auto-session), hook
-  their “session loaded” event similarly and call the same reopen logic.
-- If you prefer not to store globals in the session, write `vim.g.multi_tree_session`
-  to a file on exit and read it back after load.
-- MultiTree enforces one instance per directory, so duplicate paths will focus the
-  existing tree rather than creating another.
 
 ## Custom mappings
 
@@ -278,14 +198,32 @@ vim.api.nvim_create_autocmd("FileType", {
 })
 ```
 
-## Tips
+Create mappings to open MultiTree in various window types:
 
-- Open files from a tree in another window: focus the target window once
-  (for example, `Ctrl-w p`), then press Enter on a file in the tree.
-- Keep trees independent: each tree buffer is window-local. Changing the root or
-  expanding nodes in one tree does not affect other trees.
-- Use absolute paths or robust path expansions for consistent root labeling. Paths
-  with trailing slashes are normalized internally.
+```lua
+local wk = require("which-key")
+
+wk.add({
+  { "<leader>z", group = "multi-tree", mode = "n" }
+})
+
+vim.keymap.set(
+  "n", "<leader>zz", "<cmd>MultiTree<cr>",
+  { noremap = true, silent = true, desc = "Open multi-tree given cwd" }
+)
+vim.keymap.set(
+  "n", "<leader>ze", ":MultiTree ",
+  { noremap = true, silent = false, desc = "Open multi-tree in the current window with a provided path" }
+)
+vim.keymap.set(
+  "n", "<leader>zv", ":vs | MultiTree ",
+  { noremap = true, silent = false, desc = "Open multi-tree in a vertical split with a provided path" }
+)
+vim.keymap.set(
+  "n", "<leader>zo", ":sp | MultiTree ",
+  { noremap = true, silent = false, desc = "Open multi-tree in a horizontal split with a provided path" }
+)
+```
 
 ## Troubleshooting
 
