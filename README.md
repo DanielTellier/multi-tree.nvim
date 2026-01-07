@@ -58,12 +58,6 @@ It’s inspired by the UX and architecture of nvim-tree.lua and neo-tree.nvim.
         require("multi-tree").open(vim.loop.cwd())
       end, desc = "Open MultiTree at CWD"
     },
-    {
-      "<leader>eM",
-      function()
-        require("multi-tree").open(vim.fn.expand("%:p:h"))
-      end, desc = "Open MultiTree at file dir"
-    },
   },
 },
 ```
