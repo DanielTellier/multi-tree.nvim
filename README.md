@@ -51,14 +51,6 @@ It’s inspired by the UX and architecture of nvim-tree.lua and neo-tree.nvim.
   dependencies = {
     "nvim-tree/nvim-web-devicons",
   },
-  keys = {
-    {
-      "<leader>em",
-      function()
-        require("multi-tree").open(vim.loop.cwd())
-      end, desc = "Open MultiTree at CWD"
-    },
-  },
 },
 ```
 

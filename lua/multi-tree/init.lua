@@ -108,9 +108,32 @@ function M.close_current()
   if state then M.close(state) end
 end
 
+function M.setup_netrw_hijack()
+  vim.api.nvim_create_autocmd("FileType", {
+    pattern = "netrw",
+    callback = function(args)
+      local bufnr = args.buf
+
+      -- Get the directory path from the netrw buffer
+      local path = vim.api.nvim_buf_get_name(bufnr)
+
+      -- Switch to the netrw window and open multi-tree
+      local win = vim.fn.bufwinid(bufnr)
+      if win ~= -1 then
+        vim.api.nvim_set_current_win(win)
+        M.open(path)
+      end
+    end,
+  })
+end
+
 function M.setup(opts)
   local config = require("multi-tree.config")
   config.setup(opts)
+
+  if config.get().hijack_netrw then
+    M.setup_netrw_hijack()
+  end
 end
 
 return M

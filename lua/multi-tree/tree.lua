@@ -120,20 +120,4 @@ function M.open_file(node, how)
   end
 end
 
-function M.open_file_in_prev_window(state, node)
-  if node.type ~= "file" then return end
-  local prev = vim.fn.winnr("#")
-  if prev ~= 0 then
-    vim.cmd("wincmd p")
-    if state.opts.set_local_cwd and state.root_node and
-       state.root_node.path then
-      vim.cmd("lcd " .. vim.fn.fnameescape(state.root_node.path))
-    end
-    M.open_file(node, "edit")
-    vim.cmd("wincmd p")
-  else
-    M.open_file(node, "edit")
-  end
-end
-
 return M
