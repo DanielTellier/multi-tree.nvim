@@ -19,7 +19,7 @@ local function create_buffer(win, title)
   return buf
 end
 
-function M.open(path, bufnr)
+function M.open(path)
   local config = require("multi-tree.config")
   local opts = config.get() or {}
   local state_module = require("multi-tree.state")
@@ -41,11 +41,7 @@ function M.open(path, bufnr)
   end
 
   local win = vim.api.nvim_get_current_win()
-  local buf = bufnr or create_buffer(win, buf_title)
-  -- If we're reusing a buffer, ensure it's properly configured
-  if bufnr then
-    vim.api.nvim_buf_set_name(buf, buf_title)
-  end
+  local buf = create_buffer(win, buf_title)
   local state = state_module.create(win, buf, opts)
 
   if state.opts.set_local_cwd then
@@ -112,53 +108,9 @@ function M.close_current()
   if state then M.close(state) end
 end
 
-function M.setup_netrw_hijack()
-  -- Hijack netrw when it sets the filetype
-  vim.api.nvim_create_autocmd("FileType", {
-    pattern = "netrw",
-    callback = function(args)
-      local bufnr = args.buf
-      local path = vim.api.nvim_buf_get_name(bufnr)
-
-      -- Normalize the path (netrw might use special URIs)
-      path = path:gsub("/NetrwTreeListing$", "")
-
-      -- Clear netrw's content and settings
-      vim.api.nvim_buf_set_option(bufnr, "filetype", "")
-      vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
-      vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, {})
-      -- Open multi-tree using this buffer
-      M.open(path, bufnr)
-    end,
-  })
-end
-
--- function M.setup_netrw_hijack()
---   vim.api.nvim_create_autocmd("FileType", {
---     pattern = "netrw",
---     callback = function(args)
---       local bufnr = args.buf
-
---       -- Get the directory path from the netrw buffer
---       local path = vim.api.nvim_buf_get_name(bufnr)
-
---       -- Switch to the netrw window and open multi-tree
---       local win = vim.fn.bufwinid(bufnr)
---       if win ~= -1 then
---         vim.api.nvim_set_current_win(win)
---         M.open(path)
---       end
---     end,
---   })
--- end
-
 function M.setup(opts)
   local config = require("multi-tree.config")
   config.setup(opts)
-
-  if config.get().hijack_netrw then
-    M.setup_netrw_hijack()
-  end
 end
 
 return M
