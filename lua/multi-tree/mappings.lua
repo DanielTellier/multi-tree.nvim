@@ -22,7 +22,7 @@ function M.attach(state)
     if node.type == "dir" then
       tree.toggle(node, state)
     else
-      tree.open_file_in_prev_window(state, node)
+      tree.open_file(node, "edit")
     end
   end, "Open file or toggle directory.")
 
