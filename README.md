@@ -234,7 +234,11 @@ vim.keymap.set(
 
 ## Acknowledgements
 
-- Inspired by [nvim-tree.lua](https://github.com/nvim-tree/nvim-tree.lua), [neo-tree.nvim](https://github.com/nvim-neo-tree/neo-tree.nvim), and [telescope.nvim](https://github.com/nvim-telescope/telescope.nvim)
+- Inspired by:
+    - [nvim-tree.lua](https://github.com/nvim-tree/nvim-tree.lua)
+    - [neo-tree.nvim](https://github.com/nvim-neo-tree/neo-tree.nvim)
+    - [oil.nvim](https://github.com/stevearc/oil.nvim)
+    - [telescope.nvim](https://github.com/nvim-telescope/telescope.nvim)
 - Optional icons via [nvim-web-devicons](https://github.com/nvim-tree/nvim-web-devicons).
 
 ## Contributing
