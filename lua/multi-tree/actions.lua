@@ -158,10 +158,6 @@ function M.open_in_next_tab(how, stay)
     vim.cmd(("%dtabnext"):format(next_tab))
   end
 
-  -- if state.root_node and state.root_node.path then
-  --   vim.cmd("lcd " .. vim.fn.fnameescape(state.root_node.path))
-  -- end
-
   local escaped = vim.fn.fnameescape(node.path)
   if effective == "vsplit" then
     vim.cmd("vsplit " .. escaped)
@@ -169,6 +165,10 @@ function M.open_in_next_tab(how, stay)
     vim.cmd("split " .. escaped)
   else
     vim.cmd("edit " .. escaped)
+  end
+
+  if state.root_node and state.root_node.path then
+    vim.cmd("lcd " .. vim.fn.fnameescape(state.root_node.path))
   end
 
   if stay then
