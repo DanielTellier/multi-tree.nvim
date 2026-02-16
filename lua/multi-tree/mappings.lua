@@ -58,7 +58,7 @@ function M.attach(state)
     end
   end, "Collapse directory.")
 
-  nmap("s", function()
+  nmap("o", function()
     local node = render.get_node_under_cursor(state)
     if node and node.type == "file" then
       tree.open_file(node, "split")
