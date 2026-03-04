@@ -2,6 +2,10 @@ local M = {}
 
 M.states = {}
 
+-- Global clipboard shared across all tree instances.
+-- { path = "/abs/path", type = "file"|"dir", mode = "copy"|"cut" } or nil
+M.clipboard = nil
+
 function M.create(win, buf, opts)
   local state = {
     win = win,

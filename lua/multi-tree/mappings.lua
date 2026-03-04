@@ -112,6 +112,18 @@ function M.attach(state)
     actions.delete_file(state)
   end, "Delete file/directory.")
 
+  nmap("y", function()
+    actions.yank_node(state)
+  end, "Yank (copy) file/directory.")
+
+  nmap("Y", function()
+    actions.cut_node(state)
+  end, "Cut (move) file/directory.")
+
+  nmap("p", function()
+    actions.paste_node(state)
+  end, "Paste yanked file/directory here.")
+
   if state.opts.map_next_tab_keys then
     nmap("<leader>i", function()
       actions.open_in_next_tab("edit", false)

@@ -1,4 +1,5 @@
 local M = {}
+local uv = vim.loop
 
 function M.toggle_sort(state)
   local tree = require("multi-tree.tree")
@@ -135,6 +136,190 @@ function M.delete_file(state)
       end
     end
   end)
+end
+
+function M.yank_node(state)
+  local render = require("multi-tree.render")
+  local state_module = require("multi-tree.state")
+  local node = render.get_node_under_cursor(state)
+  if not node then return end
+
+  state_module.clipboard = {
+    path = node.path,
+    type = node.type,
+    mode = "copy",
+  }
+  vim.notify("Yanked: " .. node.name, vim.log.levels.INFO)
+end
+
+function M.cut_node(state)
+  local render = require("multi-tree.render")
+  local state_module = require("multi-tree.state")
+  local node = render.get_node_under_cursor(state)
+  if not node then return end
+
+  state_module.clipboard = {
+    path = node.path,
+    type = node.type,
+    mode = "cut",
+  }
+  vim.notify("Cut: " .. node.name, vim.log.levels.INFO)
+end
+
+--- Recursively copy a directory using vim.loop.
+local function copy_dir(src, dest)
+  vim.fn.mkdir(dest, "p")
+  -- Preserve source directory permissions.
+  local src_stat = uv.fs_stat(src)
+  if src_stat then
+    uv.fs_chmod(dest, src_stat.mode)
+  end
+  local iter = uv.fs_scandir(src)
+  if not iter then return false end
+  while true do
+    local name, typ = uv.fs_scandir_next(iter)
+    if not name then break end
+    local s = src .. "/" .. name
+    local d = dest .. "/" .. name
+    local stat = uv.fs_stat(s)
+    local is_dir = (typ == "directory") or
+                   (stat and stat.type == "directory")
+    if is_dir then
+      if not copy_dir(s, d) then return false end
+    elseif typ == "link" then
+      local link_target = uv.fs_readlink(s)
+      if not link_target or not uv.fs_symlink(link_target, d) then
+        return false
+      end
+    else
+      local ok = uv.fs_copyfile(s, d)
+      if not ok then return false end
+    end
+  end
+  return true
+end
+
+local function delete_path(path, typ)
+  if typ == "dir" then
+    return vim.fn.delete(path, "rf") == 0
+  end
+  return vim.fn.delete(path) == 0
+end
+
+local function move_path(src, dest, typ)
+  if vim.fn.rename(src, dest) == 0 then
+    return true
+  end
+
+  local copied
+  if typ == "dir" then
+    copied = copy_dir(src, dest)
+  else
+    copied = uv.fs_copyfile(src, dest)
+  end
+  if not copied then
+    -- Clean up partial copy debris.
+    if typ == "dir" then delete_path(dest, typ) end
+    return false
+  end
+
+  if delete_path(src, typ) then
+    return true
+  end
+
+  -- Best-effort rollback to avoid leaving a duplicate at destination.
+  delete_path(dest, typ)
+  return false
+end
+
+--- Refresh every open tree whose root is an ancestor of `path`.
+local function refresh_trees_containing(path)
+  local state_module = require("multi-tree.state")
+  local tree = require("multi-tree.tree")
+  for _, st in pairs(state_module.states) do
+    if st.root_node and st.root_node.path then
+      -- Refresh if the pasted path falls within this tree's root.
+      if path:sub(1, #st.root_node.path) == st.root_node.path then
+        tree.refresh(st)
+      end
+    end
+  end
+end
+
+function M.paste_node(state)
+  local render = require("multi-tree.render")
+  local state_module = require("multi-tree.state")
+  local utils = require("multi-tree.utils")
+
+  local clip = state_module.clipboard
+  if not clip then
+    vim.notify("Nothing yanked.", vim.log.levels.WARN)
+    return
+  end
+
+  local node = render.get_node_under_cursor(state)
+  if not node then return end
+
+  local dest_dir = node.type == "dir" and node.path or
+                   vim.fn.fnamemodify(node.path, ":h")
+
+  local src_name = utils.basename_safe(clip.path)
+  local dest_path = dest_dir .. "/" .. src_name
+
+  local function do_paste(final_dest)
+    if clip.type == "dir" then
+      local src_norm = utils.normalize_path(clip.path)
+      local dest_norm = utils.normalize_path(final_dest)
+      if dest_norm == src_norm or
+         dest_norm:sub(1, #src_norm + 1) == (src_norm .. "/") then
+        vim.notify(
+          "Cannot paste a directory into itself.",
+          vim.log.levels.ERROR
+        )
+        return
+      end
+    end
+
+    local ok
+    local is_cut = clip.mode == "cut"
+    if is_cut then
+      ok = move_path(clip.path, final_dest, clip.type)
+    elseif clip.type == "dir" then
+      ok = copy_dir(clip.path, final_dest)
+    else
+      ok = uv.fs_copyfile(clip.path, final_dest)
+    end
+    if ok then
+      local final_name = utils.basename_safe(final_dest)
+      local verb = is_cut and "Moved" or "Pasted"
+      vim.notify(verb .. ": " .. final_name, vim.log.levels.INFO)
+      if is_cut then
+        -- Clear clipboard after a move so you can't move twice.
+        state_module.clipboard = nil
+        -- Refresh trees that contained the source as well.
+        refresh_trees_containing(clip.path)
+      end
+      refresh_trees_containing(final_dest)
+    else
+      vim.notify(
+        "Failed to paste: " .. src_name,
+        vim.log.levels.ERROR
+      )
+    end
+  end
+
+  -- Check if destination already exists.
+  if uv.fs_stat(dest_path) then
+    vim.ui.input({
+      prompt = "'" .. src_name ..
+               "' already exists. New name (blank to cancel): ",
+    }, function(new_name)
+      if not new_name or new_name == "" then return end
+      do_paste(dest_dir .. "/" .. new_name)
+    end)
+  else
+    do_paste(dest_path)
+  end
 end
 
 function M.open_in_next_tab(how, stay)
