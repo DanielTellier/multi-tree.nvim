@@ -96,6 +96,10 @@ function M.attach(state)
     actions.toggle_sort(state)
   end, "Toggle sort mode.")
 
+  nmap(".", function()
+    actions.toggle_hidden(state)
+  end, "Toggle hidden files.")
+
   nmap("%", function()
     actions.create_file(state)
   end, "Create new file.")

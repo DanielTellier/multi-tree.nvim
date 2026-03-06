@@ -32,7 +32,9 @@ It’s inspired by the UX and architecture of nvim-tree.lua and neo-tree.nvim.
 
 - Per-window tree instances with independent roots and expansion state.
 - Window-local working directory (pwd) per tree window, with optional restore on close.
-- Directory-first sorting with optional hidden files filtering.
+- Directory-first sorting with toggle between name and modification time.
+- Toggle hidden (dot) files visibility per tree instance.
+- Clipboard operations: yank (copy), cut, and paste files and directories across trees.
 - Optional icons via nvim-web-devicons.
 - Simple, buffer-local keymaps for expand/collapse and opening files.
 - "Open in next tab" actions (edit/split/vsplit), with "stay in tree" variants.
@@ -68,23 +70,27 @@ It’s inspired by the UX and architecture of nvim-tree.lua and neo-tree.nvim.
 Inside a MultiTree buffer:
 
 - Enter: Toggle a directory or open a file. The plugin attempts to open files in the
-  previously focused window and sets that window’s local cwd to the tree’s root if enabled.
+  previously focused window and sets that window's local cwd to the tree's root if enabled.
 - l: Expand a directory or open a file.
 - h: Collapse a directory or collapse its parent.
+- o: Open a file in a horizontal split (sets local cwd if enabled).
 - v: Open a file in a vertical split (sets local cwd if enabled).
-- s: Open a file in a horizontal split (sets local cwd if enabled).
 - t: Open a file in a new tab (sets local cwd if enabled).
 - C: Change the root to the selected directory (updates local cwd if enabled).
 - r: Refresh the tree.
 - q: Close the tree buffer.
 
-Netrw-style file operations:
+File and directory operations:
 
 - s: Toggle sort mode between name and modification time.
+- .: Toggle hidden (dot) files visibility.
 - %: Create new file in current/selected directory.
 - d: Create new directory in current/selected directory.
 - R: Rename file or directory under cursor.
 - D: Delete file or directory under cursor (with confirmation).
+- y: Yank (copy) file or directory under cursor to clipboard.
+- Y: Cut (move) file or directory under cursor to clipboard.
+- p: Paste yanked/cut file or directory into current/selected directory.
 
 Optional “open in next tab” actions (enabled when `map_next_tab_keys = true`):
 
@@ -172,27 +178,27 @@ vim.api.nvim_create_autocmd("FileType", {
     local buf = ev.buf
     -- Examples:
     vim.keymap.set("n", "<leader>i", function()
-      require("multi-tree").open_current_node_in_next_tab("edit", false)
+      require("multi-tree.actions").open_in_next_tab("edit", false)
     end, { buffer = buf, desc = "Open file on next tab" })
 
     vim.keymap.set("n", "<leader>I", function()
-      require("multi-tree").open_current_node_in_next_tab("edit", true)
+      require("multi-tree.actions").open_in_next_tab("edit", true)
     end, { buffer = buf, desc = "Open file on next tab and stay" })
 
     vim.keymap.set("n", "<leader>o", function()
-      require("multi-tree").open_current_node_in_next_tab("split", false)
+      require("multi-tree.actions").open_in_next_tab("split", false)
     end, { buffer = buf, desc = "Open split on next tab" })
 
     vim.keymap.set("n", "<leader>O", function()
-      require("multi-tree").open_current_node_in_next_tab("split", true)
+      require("multi-tree.actions").open_in_next_tab("split", true)
     end, { buffer = buf, desc = "Open split on next tab and stay" })
 
     vim.keymap.set("n", "<leader>v", function()
-      require("multi-tree").open_current_node_in_next_tab("vsplit", false)
+      require("multi-tree.actions").open_in_next_tab("vsplit", false)
     end, { buffer = buf, desc = "Open vsplit on next tab" })
 
     vim.keymap.set("n", "<leader>V", function()
-      require("multi-tree").open_current_node_in_next_tab("vsplit", true)
+      require("multi-tree.actions").open_in_next_tab("vsplit", true)
     end, { buffer = buf, desc = "Open vsplit on next tab and stay" })
   end,
 })

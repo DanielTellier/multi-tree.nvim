@@ -11,6 +11,15 @@ function M.toggle_sort(state)
   vim.notify(msg, vim.log.levels.INFO)
 end
 
+function M.toggle_hidden(state)
+  local tree = require("multi-tree.tree")
+  state.opts.show_hidden = not state.opts.show_hidden
+  tree.refresh(state)
+  local msg = "Hidden files: " ..
+              (state.opts.show_hidden and "shown" or "hidden")
+  vim.notify(msg, vim.log.levels.INFO)
+end
+
 function M.create_file(state)
   local render = require("multi-tree.render")
   local tree = require("multi-tree.tree")

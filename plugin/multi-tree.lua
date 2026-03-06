@@ -16,3 +16,4 @@ end, {})
 vim.api.nvim_create_user_command("MultiTreeClose", function()
   require("multi-tree").close_current()
 end, {})
+
