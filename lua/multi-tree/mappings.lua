@@ -84,9 +84,33 @@ function M.attach(state)
     if node then tree.change_root(node, state) end
   end, "Change root to selected directory.")
 
+  nmap("-", function()
+    if not state.root_node or not state.root_node.path then
+      return
+    end
+    local cur = state.root_node.path
+    local parent = vim.fn.fnamemodify(cur, ":h")
+    if parent == cur or parent == "" then
+      vim.notify(
+        "Already at filesystem root.",
+        vim.log.levels.WARN
+      )
+      return
+    end
+    tree.change_root_to(state, parent)
+  end, "Change root to parent directory.")
+
   nmap("r", function()
     tree.refresh(state)
   end, "Refresh tree.")
+
+  nmap("[d", function()
+    tree.history_back(state)
+  end, "Go back to previous root.")
+
+  nmap("]d", function()
+    tree.history_forward(state)
+  end, "Go forward to next root.")
 
   nmap("q", function()
     multi_tree.close(state)
@@ -127,6 +151,22 @@ function M.attach(state)
   nmap("p", function()
     actions.paste_node(state)
   end, "Paste yanked file/directory here.")
+
+  nmap("gy", function()
+    actions.copy_path(state, "absolute")
+  end, "Copy absolute path of node.")
+
+  nmap("gY", function()
+    actions.copy_path(state, "relative")
+  end, "Copy path of node relative to tree root.")
+
+  nmap("m", function()
+    actions.bookmark_add(state)
+  end, "Bookmark node under cursor.")
+
+  nmap("'", function()
+    actions.bookmark_jump()
+  end, "Jump to bookmark.")
 
   if state.opts.map_next_tab_keys then
     nmap("<leader>i", function()

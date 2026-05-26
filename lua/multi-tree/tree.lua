@@ -10,27 +10,21 @@ function M.toggle(node, state)
   render.render(state)
 end
 
-function M.change_root(node, state)
-  if node.type ~= "dir" then return end
+--- Internal: rebuild the tree at `path`. Returns true on success.
+--- When `push_history` is true, truncates forward history past
+--- the current index, appends `path`, and advances the index.
+local function set_root_from_path(state, path, push_history)
   local utils = require("multi-tree.utils")
-  local state_module = require("multi-tree.state")
   local fs = require("multi-tree.fs")
   local render = require("multi-tree.render")
 
-  local npath = utils.normalize_path(node.path)
-
-  -- Add to history
-  if not state.dir_history then state.dir_history = {} end
-  if state.root_node and state.root_node.path then
-    table.insert(state.dir_history, state.root_node.path)
-  end
-  state.history_index = #state.dir_history + 1
-
-  -- If another tree already has this root, focus it and bail.
-  local existing = state_module.find_by_path(npath)
-  if existing and existing.buf ~= state.buf then
-    state_module.focus_window(existing)
-    return
+  local npath = utils.normalize_path(path)
+  if vim.fn.isdirectory(npath) == 0 then
+    vim.notify(
+      "Directory no longer exists: " .. npath,
+      vim.log.levels.WARN
+    )
+    return false
   end
 
   local new_root = {
@@ -53,7 +47,78 @@ function M.change_root(node, state)
     vim.cmd("lcd " .. vim.fn.fnameescape(npath))
   end
 
+  if push_history then
+    state.dir_history = state.dir_history or {}
+    state.history_index = state.history_index or 0
+    for i = #state.dir_history, state.history_index + 1, -1 do
+      table.remove(state.dir_history, i)
+    end
+    table.insert(state.dir_history, npath)
+    state.history_index = #state.dir_history
+  end
+
   render.render(state)
+  return true
+end
+
+function M.change_root_to(state, path)
+  local utils = require("multi-tree.utils")
+  local state_module = require("multi-tree.state")
+
+  local npath = utils.normalize_path(path)
+  if state.root_node and
+     utils.normalize_path(state.root_node.path) == npath then
+    return
+  end
+
+  -- If another tree already has this root, focus it and bail.
+  local existing = state_module.find_by_path(npath)
+  if existing and existing.buf ~= state.buf then
+    state_module.focus_window(existing)
+    return
+  end
+
+  set_root_from_path(state, npath, true)
+end
+
+function M.change_root(node, state)
+  if node.type ~= "dir" then return end
+  M.change_root_to(state, node.path)
+end
+
+function M.history_back(state)
+  if not state.dir_history or
+     not state.history_index or
+     state.history_index <= 1 then
+    vim.notify("No earlier directory.", vim.log.levels.WARN)
+    return
+  end
+  local target_index = state.history_index - 1
+  local path = state.dir_history[target_index]
+  if set_root_from_path(state, path, false) then
+    state.history_index = target_index
+  else
+    table.remove(state.dir_history, target_index)
+    if state.history_index > target_index then
+      state.history_index = state.history_index - 1
+    end
+  end
+end
+
+function M.history_forward(state)
+  if not state.dir_history or
+     not state.history_index or
+     state.history_index >= #state.dir_history then
+    vim.notify("No later directory.", vim.log.levels.WARN)
+    return
+  end
+  local target_index = state.history_index + 1
+  local path = state.dir_history[target_index]
+  if set_root_from_path(state, path, false) then
+    state.history_index = target_index
+  else
+    table.remove(state.dir_history, target_index)
+  end
 end
 
 function M.refresh(state)

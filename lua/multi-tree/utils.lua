@@ -29,6 +29,11 @@ function M.basename_safe(path)
   return name
 end
 
+function M.is_subpath(child, parent)
+  if child == parent then return true end
+  return child:sub(1, #parent + 1) == parent .. "/"
+end
+
 function M.icon_for(node, default)
   local config = require("multi-tree.config").get()
   if not config.icons then

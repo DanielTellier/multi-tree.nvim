@@ -245,10 +245,10 @@ end
 local function refresh_trees_containing(path)
   local state_module = require("multi-tree.state")
   local tree = require("multi-tree.tree")
+  local utils = require("multi-tree.utils")
   for _, st in pairs(state_module.states) do
     if st.root_node and st.root_node.path then
-      -- Refresh if the pasted path falls within this tree's root.
-      if path:sub(1, #st.root_node.path) == st.root_node.path then
+      if utils.is_subpath(path, st.root_node.path) then
         tree.refresh(st)
       end
     end
@@ -279,8 +279,7 @@ function M.paste_node(state)
     if clip.type == "dir" then
       local src_norm = utils.normalize_path(clip.path)
       local dest_norm = utils.normalize_path(final_dest)
-      if dest_norm == src_norm or
-         dest_norm:sub(1, #src_norm + 1) == (src_norm .. "/") then
+      if utils.is_subpath(dest_norm, src_norm) then
         vim.notify(
           "Cannot paste a directory into itself.",
           vim.log.levels.ERROR
@@ -329,6 +328,98 @@ function M.paste_node(state)
   else
     do_paste(dest_path)
   end
+end
+
+function M.bookmark_add(state)
+  local render = require("multi-tree.render")
+  local bookmarks = require("multi-tree.bookmarks")
+  local utils = require("multi-tree.utils")
+  local node = render.get_node_under_cursor(state)
+  if not node then return end
+
+  local default = node.name
+  vim.ui.input({
+    prompt = "Bookmark label: ",
+    default = default,
+  }, function(label)
+    if not label or label == "" then return end
+    local path = utils.normalize_path(node.path)
+    bookmarks.add(label, path)
+    vim.notify(
+      "Bookmarked '" .. label .. "' -> " .. path,
+      vim.log.levels.INFO
+    )
+  end)
+end
+
+local function pick_bookmark(prompt, on_choice)
+  local bookmarks = require("multi-tree.bookmarks")
+  local entries = bookmarks.list()
+  if #entries == 0 then
+    vim.notify("No bookmarks set.", vim.log.levels.WARN)
+    return
+  end
+  vim.ui.select(entries, {
+    prompt = prompt,
+    format_item = function(item)
+      return item.label .. "  " .. item.path
+    end,
+  }, function(choice)
+    if not choice then return end
+    on_choice(choice)
+  end)
+end
+
+function M.bookmark_jump()
+  local multi_tree = require("multi-tree")
+  pick_bookmark("Jump to bookmark:", function(choice)
+    multi_tree.reveal_path(choice.path)
+  end)
+end
+
+function M.bookmark_delete()
+  local bookmarks = require("multi-tree.bookmarks")
+  pick_bookmark("Delete bookmark:", function(choice)
+    if bookmarks.remove(choice.label) then
+      vim.notify(
+        "Removed bookmark '" .. choice.label .. "'.",
+        vim.log.levels.INFO
+      )
+    end
+  end)
+end
+
+function M.copy_path(state, mode)
+  local render = require("multi-tree.render")
+  local utils = require("multi-tree.utils")
+  local node = render.get_node_under_cursor(state)
+  if not node then return end
+
+  local path
+  if mode == "relative" then
+    if not state.root_node or not state.root_node.path then
+      return
+    end
+    local root = utils.normalize_path(state.root_node.path)
+    local abs = utils.normalize_path(node.path)
+    if abs == root then
+      path = "."
+    elseif utils.is_subpath(abs, root) then
+      path = abs:sub(#root + 2)
+    else
+      vim.notify(
+        "Node is not under tree root.",
+        vim.log.levels.WARN
+      )
+      return
+    end
+  else
+    path = utils.normalize_path(node.path)
+  end
+
+  vim.fn.setreg("+", path)
+  vim.fn.setreg('"', path)
+  vim.notify("Copied: " .. path, vim.log.levels.INFO)
 end
 
 function M.open_in_next_tab(how, stay)
