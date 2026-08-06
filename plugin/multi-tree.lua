@@ -19,6 +19,8 @@ vim.api.nvim_create_autocmd("ColorScheme", {
   callback = set_default_highlights,
 })
 
+require("multi-tree.file_explorer").setup()
+
 vim.api.nvim_create_user_command("MultiTree", function(opts)
   local path = opts.args ~= "" and opts.args or vim.loop.cwd()
   require("multi-tree").open(path)
@@ -40,4 +42,3 @@ end, {})
 vim.api.nvim_create_user_command("MultiTreeBookmarkDelete", function()
   require("multi-tree.actions").bookmark_delete()
 end, {})
-

@@ -21,6 +21,7 @@ It’s inspired by the UX and architecture of nvim-tree.lua and neo-tree.nvim.
 - [Keymaps](#keymaps)
 - [Default Configuration](#default-configuration)
 - [Configuration](#configuration)
+- [Replacing netrw](#replacing-netrw)
 - [Window-local CWD](#window-local-cwd)
 - [Custom mappings](#custom-mappings)
 - [Troubleshooting](#troubleshooting)
@@ -39,6 +40,8 @@ It’s inspired by the UX and architecture of nvim-tree.lua and neo-tree.nvim.
 - Simple, buffer-local keymaps for expand/collapse and opening files.
 - "Open in next tab" actions (edit/split/vsplit), with "stay in tree" variants.
 - Commands to open, refresh, and close trees.
+- Optional netrw override for directory buffers (`nvim .`, `:e .`), leaving
+  remote paths such as `scp://` to netrw.
 
 ## Installation
 
@@ -116,6 +119,7 @@ Here are all the available options and their default values:
   set_local_cwd = true,         -- Set window-local working directory (:lcd) to tree root
   restore_local_cwd_on_close = false, -- Restore previous cwd when closing tree buffer
   map_next_tab_keys = true,     -- Provide default <leader> mappings for "open in next tab"
+  default_file_explorer = true, -- Open MultiTree instead of netrw for directories
 }
 ```
 
@@ -131,7 +135,37 @@ require("multi-tree").setup({
   set_local_cwd = true,         -- Set :lcd to the tree’s root for the tree window.
   restore_local_cwd_on_close = false, -- Restore previous cwd when closing the tree buffer.
   map_next_tab_keys = true,     -- Provide default <leader>{i,I,o,O,v,V} mappings.
+  default_file_explorer = true, -- Take over directory buffers from netrw.
 })
+```
+
+## Replacing netrw
+
+By default MultiTree takes over directory buffers, so `nvim .`, `:e .`, and
+`:e src/` open a tree instead of netrw:
+
+```lua
+require("multi-tree").setup({
+  default_file_explorer = true, -- default
+})
+```
+
+Only netrw's local directory browsing is disabled. Remote paths are left to
+netrw, so `:e scp://host/path/`, `sftp://`, and `ftp://` continue to work as
+usual — MultiTree browses the local filesystem only.
+
+Set `default_file_explorer = false` to leave netrw (or another file explorer)
+in charge of directories.
+
+If you lazy-load the plugin, load it on startup so it can claim the buffer from
+`nvim .`. With lazy.nvim:
+
+```lua
+{
+  "DanielTellier/multi-tree.nvim",
+  lazy = false,
+  dependencies = { "nvim-tree/nvim-web-devicons" },
+}
 ```
 
 Make tree windows clean and fixed-width:
