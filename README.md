@@ -97,14 +97,17 @@ File and directory operations:
 
 Optional “open in next tab” actions (enabled when `map_next_tab_keys = true`):
 
-- <leader>i: Open file on next tab.
-- <leader>I: Open file on next tab and stay in tree.
-- <leader>o: Open file in horizontal split on next tab.
-- <leader>O: Open file in horizontal split on next tab and stay in tree.
-- <leader>v: Open file in vertical split on next tab.
-- <leader>V: Open file in vertical split on next tab and stay in tree.
+- `<leader>i`: Open file on next tab.
+- `<leader>I`: Open file on next tab and stay in tree.
+- `<leader>o`: Open file in horizontal split on next tab.
+- `<leader>O`: Open file in horizontal split on next tab and stay in tree.
+- `<leader>v`: Open file in vertical split on next tab.
+- `<leader>V`: Open file in vertical split on next tab and stay in tree.
 
-To customize or disable these, see the “Custom mappings” section.
+These are `<leader>`-prefixed, so they do not shadow the plain `o`/`v`/`t`
+mappings that open files in the current tab.
+
+To remap or disable these, see the “Custom mappings” section.
 
 ## Default Configuration
 
@@ -197,10 +200,12 @@ If you prefer per-tab rather than per-window cwd, use `:tcd` in your own fork or
 
 ## Custom mappings
 
-Disable the default “open in next tab” mappings and define your own:
+The default “open in next tab” mappings are `<leader>{i,I,o,O,v,V}`. To pick your
+own keys instead, disable them and map the actions yourself. The example below
+uses a `<leader>t` prefix:
 
 ```lua
--- Disable built-in next-tab mappings.
+-- Disable built-in <leader>{i,I,o,O,v,V} next-tab mappings.
 require("multi-tree").setup({
   map_next_tab_keys = false,
 })
@@ -211,27 +216,27 @@ vim.api.nvim_create_autocmd("FileType", {
   callback = function(ev)
     local buf = ev.buf
     -- Examples:
-    vim.keymap.set("n", "<leader>i", function()
+    vim.keymap.set("n", "<leader>ti", function()
       require("multi-tree.actions").open_in_next_tab("edit", false)
     end, { buffer = buf, desc = "Open file on next tab" })
 
-    vim.keymap.set("n", "<leader>I", function()
+    vim.keymap.set("n", "<leader>tI", function()
       require("multi-tree.actions").open_in_next_tab("edit", true)
     end, { buffer = buf, desc = "Open file on next tab and stay" })
 
-    vim.keymap.set("n", "<leader>o", function()
+    vim.keymap.set("n", "<leader>to", function()
       require("multi-tree.actions").open_in_next_tab("split", false)
     end, { buffer = buf, desc = "Open split on next tab" })
 
-    vim.keymap.set("n", "<leader>O", function()
+    vim.keymap.set("n", "<leader>tO", function()
       require("multi-tree.actions").open_in_next_tab("split", true)
     end, { buffer = buf, desc = "Open split on next tab and stay" })
 
-    vim.keymap.set("n", "<leader>v", function()
+    vim.keymap.set("n", "<leader>tv", function()
       require("multi-tree.actions").open_in_next_tab("vsplit", false)
     end, { buffer = buf, desc = "Open vsplit on next tab" })
 
-    vim.keymap.set("n", "<leader>V", function()
+    vim.keymap.set("n", "<leader>tV", function()
       require("multi-tree.actions").open_in_next_tab("vsplit", true)
     end, { buffer = buf, desc = "Open vsplit on next tab and stay" })
   end,
